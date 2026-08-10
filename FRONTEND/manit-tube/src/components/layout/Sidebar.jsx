@@ -1,128 +1,185 @@
 import {
-  Clock3,
-  Compass,
-  History,
   Home,
+  Compass,
+  Flame,
+  History,
+  Bookmark,
   ListVideo,
-  Settings,
-  ThumbsUp,
-  Upload,
+  Code2,
+  Brain,
+  Database,
+  BriefcaseBusiness,
   Users,
-  X
+  GraduationCap,
 } from "lucide-react";
 
+import { NavLink } from "react-router-dom";
+
 const mainLinks = [
-  { label: "Home", icon: Home },
-  { label: "Explore", icon: Compass },
-  { label: "Subscriptions", icon: Users },
+  {
+    name: "Home",
+    icon: Home,
+    path: "/",
+  },
+  {
+    name: "Explore",
+    icon: Compass,
+    path: "/search",
+  },
+  {
+    name: "Trending",
+    icon: Flame,
+    path: "/trending",
+  },
 ];
 
 const libraryLinks = [
-  { label: "History", icon: History },
-  { label: "Playlists", icon: ListVideo },
-  { label: "Liked Videos", icon: ThumbsUp },
+  {
+    name: "History",
+    icon: History,
+    path: "/history",
+  },
+  {
+    name: "Saved",
+    icon: Bookmark,
+    path: "/saved",
+  },
+  {
+    name: "Playlists",
+    icon: ListVideo,
+    path: "/playlists",
+  },
 ];
 
-export default function Sidebar({ open, onClose }) {
+const learningLinks = [
+  {
+    name: "CSE",
+    icon: Code2,
+    path: "/category/cse",
+  },
+  {
+    name: "AI & ML",
+    icon: Brain,
+    path: "/category/ai-ml",
+  },
+  {
+    name: "DBMS",
+    icon: Database,
+    path: "/category/dbms",
+  },
+  {
+    name: "Placements",
+    icon: BriefcaseBusiness,
+    path: "/category/placements",
+  },
+];
+
+function SidebarSection({ title, links }) {
   return (
-    <>
-      {/* Mobile overlay */}
-      {open && (
-        <div
-          onClick={onClose}
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
-        />
-      )}
+    <div className="mb-7">
 
-      <aside
-        className={`
-          fixed left-0 top-16 z-50 h-[calc(100vh-4rem)]
-          w-64 border-r border-[#24282E]
-          bg-[#090B0D]
-          transition-transform duration-300
-          lg:translate-x-0
-          ${open ? "translate-x-0" : "-translate-x-full"}
-        `}
-      >
-        <div className="flex h-full flex-col overflow-y-auto px-3 py-5">
+      <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#969791]">
+        {title}
+      </p>
 
-          {/* Mobile close */}
-          <button
-            onClick={onClose}
-            className="mb-4 ml-auto rounded-lg p-2 text-gray-500 hover:bg-[#181C21] hover:text-white lg:hidden"
-          >
-            <X size={19} />
-          </button>
+      <div className="space-y-0.5">
 
-          {/* Main */}
-          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-600">
-            Discover
-          </p>
+        {links.map((item) => {
 
-          <nav className="space-y-1">
-            {mainLinks.map(({ label, icon: Icon }) => (
-              <button
-                key={label}
-                className={`flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm font-medium transition
-                  ${
-                    label === "Home"
-                      ? "bg-[#22C55E]/10 text-[#22C55E]"
-                      : "text-gray-400 hover:bg-[#181C21] hover:text-white"
-                  }
-                `}
-              >
-                <Icon size={19} />
-                {label}
-              </button>
-            ))}
-          </nav>
+          const Icon = item.icon;
 
-          <div className="my-6 h-px bg-[#24282E]" />
+          return (
+            <NavLink
+              key={item.name}
+              to={item.path}
+              className={({ isActive }) =>
+                `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition ${
+                  isActive
+                    ? "bg-[#e8f2f7] text-[#075b8d] dark:bg-[#12303f] dark:text-[#64b5dc]"
+                    : "text-[#60615c] hover:bg-[#ecece8] hover:text-[#171817] dark:text-[#aaaCA7] dark:hover:bg-[#1c1e1f] dark:hover:text-[#f0f0ed]"
+                }`
+              }
+            >
+              <Icon
+                size={18}
+                strokeWidth={1.8}
+                className="shrink-0"
+              />
 
-          {/* Library */}
-          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-600">
-            Library
-          </p>
+              {item.name}
+            </NavLink>
+          );
+        })}
 
-          <nav className="space-y-1">
-            {libraryLinks.map(({ label, icon: Icon }) => (
-              <button
-                key={label}
-                className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm font-medium text-gray-400 transition hover:bg-[#181C21] hover:text-white"
-              >
-                <Icon size={19} />
-                {label}
-              </button>
-            ))}
-          </nav>
+      </div>
 
-          <div className="my-6 h-px bg-[#24282E]" />
-
-          {/* Creator */}
-          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-600">
-            Creator
-          </p>
-
-          <button className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm font-medium text-gray-400 transition hover:bg-[#181C21] hover:text-white">
-            <Upload size={19} />
-            Upload Video
-          </button>
-
-          <button className="mt-1 flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm font-medium text-gray-400 transition hover:bg-[#181C21] hover:text-white">
-            <Settings size={19} />
-            Settings
-          </button>
-
-          <div className="mt-auto pt-10">
-            <p className="px-3 text-xs leading-5 text-gray-600">
-              MANIT Tube
-              <br />
-              Built for creators.
-            </p>
-          </div>
-
-        </div>
-      </aside>
-    </>
+    </div>
   );
 }
+
+function Sidebar() {
+  return (
+    <aside className="fixed bottom-0 left-0 top-[68px] z-40 hidden w-[230px] overflow-y-auto border-r border-[#deded9] bg-[#f7f7f4] px-3 py-6 dark:border-[#292a2b] dark:bg-[#101112] lg:block">
+
+      <SidebarSection
+        title="Discover"
+        links={mainLinks}
+      />
+
+      <SidebarSection
+        title="Library"
+        links={libraryLinks}
+      />
+
+      <SidebarSection
+        title="Learn"
+        links={learningLinks}
+      />
+
+      {/* Community */}
+
+      <div className="border-t border-[#deded9] pt-5 dark:border-[#292a2b]">
+
+        <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[#969791]">
+          Community
+        </p>
+
+        <NavLink
+          to="/creators"
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-[#60615c] transition hover:bg-[#ecece8] hover:text-[#171817] dark:text-[#aaaCA7] dark:hover:bg-[#1c1e1f] dark:hover:text-[#f0f0ed]"
+        >
+          <Users size={18} />
+          Creators
+        </NavLink>
+
+        <NavLink
+          to="/campus"
+          className="mt-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-[#60615c] transition hover:bg-[#ecece8] hover:text-[#171817] dark:text-[#aaaCA7] dark:hover:bg-[#1c1e1f] dark:hover:text-[#f0f0ed]"
+        >
+          <GraduationCap size={18} />
+          Campus
+        </NavLink>
+
+      </div>
+
+      {/* Footer */}
+
+      <div className="mt-10 px-3">
+
+        <p className="text-[11px] leading-5 text-[#969791]">
+          MANIT Tube
+          <br />
+          Student Video Network
+        </p>
+
+        <p className="mt-2 text-[10px] text-[#aaaBA6]">
+          © 2026 MANIT
+        </p>
+
+      </div>
+
+    </aside>
+  );
+}
+
+export default Sidebar;

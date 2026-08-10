@@ -6,7 +6,7 @@ import {
 
 import { Link, useParams } from "react-router-dom";
 
-import VideoGrid from "../components/common/VideoGrid";
+import VideoGrid from "../components/home/VideoGrid";
 
 const videos = [
   {
