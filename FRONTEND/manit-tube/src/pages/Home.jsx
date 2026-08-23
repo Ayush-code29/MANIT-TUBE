@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -8,6 +9,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+
+import { getVideos } from "../api/videoApi";
 
 const featured = {
   title: "Getting Started with Competitive Programming",
@@ -50,53 +53,6 @@ const continueWatching = [
   },
 ];
 
-const trending = [
-  {
-    id: 4,
-    title: "How to Prepare for Product-Based Companies",
-    creator: "MANIT Placement Cell",
-    category: "Placements",
-    views: "18K",
-    time: "2 days ago",
-    duration: "21:34",
-    thumbnail:
-      "https://images.unsplash.com/photo-1523240795612-9a054b0db644",
-  },
-  {
-    id: 5,
-    title: "Build a Full Stack MERN Application",
-    creator: "Web Dev Club",
-    category: "Web Development",
-    views: "12K",
-    time: "4 days ago",
-    duration: "46:20",
-    thumbnail:
-      "https://images.unsplash.com/photo-1555066931-4365d14bab8c",
-  },
-  {
-    id: 6,
-    title: "DBMS Most Important Concepts",
-    creator: "MANIT Academics",
-    category: "DBMS",
-    views: "9.7K",
-    time: "1 week ago",
-    duration: "34:12",
-    thumbnail:
-      "https://images.unsplash.com/photo-1451187580459-43490279c0fa",
-  },
-  {
-    id: 7,
-    title: "Life Inside MANIT: Campus Tour",
-    creator: "MANIT Media",
-    category: "Campus",
-    views: "24K",
-    time: "3 days ago",
-    duration: "12:48",
-    thumbnail:
-      "https://images.unsplash.com/photo-1564981797816-1043664bf78d",
-  },
-];
-
 const creators = [
   {
     name: "MANIT Coding Club",
@@ -124,7 +80,86 @@ const creators = [
   },
 ];
 
-function SectionHeading({ icon: Icon, title, description, action }) {
+function formatDuration(seconds) {
+  if (!seconds || Number.isNaN(Number(seconds))) {
+    return "00:00";
+  }
+
+  const totalSeconds = Math.floor(Number(seconds));
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(
+      remainingSeconds
+    ).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function formatViews(views) {
+  const count = Number(views) || 0;
+
+  if (count >= 1000000) {
+    return `${(count / 1000000).toFixed(1)}M`;
+  }
+
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}K`;
+  }
+
+  return count.toString();
+}
+
+function formatRelativeTime(date) {
+  if (!date) {
+    return "";
+  }
+
+  const now = new Date();
+  const createdAt = new Date(date);
+
+  const difference = now - createdAt;
+
+  const seconds = Math.floor(difference / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+
+  if (seconds < 60) {
+    return "just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} min${minutes !== 1 ? "s" : ""} ago`;
+  }
+
+  if (hours < 24) {
+    return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+  }
+
+  if (days < 7) {
+    return `${days} day${days !== 1 ? "s" : ""} ago`;
+  }
+
+  if (weeks < 5) {
+    return `${weeks} week${weeks !== 1 ? "s" : ""} ago`;
+  }
+
+  return `${months} month${months !== 1 ? "s" : ""} ago`;
+}
+
+function SectionHeading({
+  icon: Icon,
+  title,
+  description,
+  action,
+}) {
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
@@ -170,9 +205,6 @@ function FeaturedVideo() {
       className="overflow-hidden rounded-2xl border border-[#deded9] bg-white dark:border-[#292a2b] dark:bg-[#181a1b]"
     >
       <div className="grid lg:grid-cols-[1.55fr_1fr]">
-
-        {/* Thumbnail */}
-
         <Link
           to="/watch/featured"
           className="group relative block aspect-video overflow-hidden bg-[#161819] lg:aspect-auto"
@@ -201,10 +233,7 @@ function FeaturedVideo() {
           </div>
         </Link>
 
-        {/* Information */}
-
         <div className="flex flex-col justify-center p-6 sm:p-8">
-
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#075b8d]">
             Featured this week
           </p>
@@ -218,7 +247,6 @@ function FeaturedVideo() {
           </p>
 
           <div className="mt-6 flex items-center gap-3">
-
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e7f1f6] text-xs font-bold text-[#075b8d] dark:bg-[#173442] dark:text-[#62afd6]">
               MC
             </div>
@@ -232,7 +260,6 @@ function FeaturedVideo() {
                 {featured.views} · {featured.duration}
               </p>
             </div>
-
           </div>
 
           <Link
@@ -242,7 +269,6 @@ function FeaturedVideo() {
             <Play size={15} fill="currentColor" />
             Watch now
           </Link>
-
         </div>
       </div>
     </motion.section>
@@ -260,7 +286,6 @@ function ContinueCard({ video, index }) {
         to={`/watch/${video.id}`}
         className="group block"
       >
-
         <div className="relative aspect-video overflow-hidden rounded-xl bg-[#ddd]">
           <img
             src={video.thumbnail}
@@ -271,7 +296,9 @@ function ContinueCard({ video, index }) {
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
             <div
               className="h-full bg-[#c9362b]"
-              style={{ width: `${video.progress}%` }}
+              style={{
+                width: `${video.progress}%`,
+              }}
             />
           </div>
 
@@ -287,13 +314,14 @@ function ContinueCard({ video, index }) {
         <p className="mt-1 text-xs text-[#85867f]">
           {video.creator}
         </p>
-
       </Link>
     </motion.div>
   );
 }
 
 function TrendingCard({ video, index }) {
+  const videoId = video._id;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -301,26 +329,24 @@ function TrendingCard({ video, index }) {
       transition={{ delay: index * 0.06 }}
     >
       <Link
-        to={`/watch/${video.id}`}
+        to={`/watch/${videoId}`}
         className="group block"
       >
-
         <div className="relative aspect-video overflow-hidden rounded-xl bg-[#ddd]">
           <img
             src={video.thumbnail}
-            alt=""
+            alt={video.title}
             className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
           />
 
           <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-1 text-[10px] font-semibold text-white">
-            {video.duration}
+            {formatDuration(video.duration)}
           </span>
         </div>
 
         <div className="mt-3">
-
           <p className="text-[10px] font-bold uppercase tracking-wider text-[#075b8d]">
-            {video.category}
+            MANIT Tube
           </p>
 
           <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 group-hover:text-[#075b8d] dark:group-hover:text-[#58a9d2]">
@@ -328,15 +354,17 @@ function TrendingCard({ video, index }) {
           </h3>
 
           <p className="mt-1 text-xs text-[#85867f]">
-            {video.creator}
+            {video.owner?.fullName ||
+              video.owner?.username ||
+              "MANIT Student"}
           </p>
 
           <p className="text-xs text-[#999a94]">
-            {video.views} views · {video.time}
+            {formatViews(video.views)} views
+            {video.createdAt &&
+              ` · ${formatRelativeTime(video.createdAt)}`}
           </p>
-
         </div>
-
       </Link>
     </motion.div>
   );
@@ -348,7 +376,6 @@ function CreatorCard({ creator }) {
       to="/creators"
       className="group flex items-center gap-4 rounded-xl border border-[#deded9] bg-white p-4 transition hover:border-[#c8c8c2] hover:shadow-sm dark:border-[#292a2b] dark:bg-[#181a1b] dark:hover:border-[#3a3c3d]"
     >
-
       <img
         src={creator.avatar}
         alt=""
@@ -373,15 +400,54 @@ function CreatorCard({ creator }) {
         size={17}
         className="text-[#aaa]"
       />
-
     </Link>
   );
 }
 
+function VideoSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="aspect-video rounded-xl bg-[#e5e5e1] dark:bg-[#292a2b]" />
+
+      <div className="mt-3 h-4 w-4/5 rounded bg-[#e5e5e1] dark:bg-[#292a2b]" />
+
+      <div className="mt-2 h-3 w-2/5 rounded bg-[#e5e5e1] dark:bg-[#292a2b]" />
+
+      <div className="mt-2 h-3 w-3/5 rounded bg-[#e5e5e1] dark:bg-[#292a2b]" />
+    </div>
+  );
+}
+
 function Home() {
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getVideos(1, 12);
+
+        setVideos(data.videos || []);
+      } catch (error) {
+        console.error("Home videos error:", error);
+
+        setError(
+          "Unable to load videos. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVideos();
+  }, []);
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-12 pb-16">
-
       {/* Intro */}
 
       <section>
@@ -403,10 +469,9 @@ function Home() {
 
       <FeaturedVideo />
 
-      {/* Continue */}
+      {/* Continue Watching */}
 
       <section>
-
         <SectionHeading
           icon={Clock3}
           title="Continue watching"
@@ -426,13 +491,11 @@ function Home() {
             />
           ))}
         </div>
-
       </section>
 
       {/* Trending */}
 
       <section>
-
         <SectionHeading
           icon={Flame}
           title="Trending this week"
@@ -443,22 +506,48 @@ function Home() {
           }}
         />
 
-        <div className="grid grid-cols-1 gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {trending.map((video, index) => (
-            <TrendingCard
-              key={video.id}
-              video={video}
-              index={index}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <VideoSkeleton key={index} />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-[#deded9] bg-white p-8 text-center dark:border-[#292a2b] dark:bg-[#181a1b]">
+            <p className="text-sm font-medium text-[#777871] dark:text-[#969791]">
+              {error}
+            </p>
+          </div>
+        ) : videos.length === 0 ? (
+          <div className="rounded-xl border border-[#deded9] bg-white p-8 text-center dark:border-[#292a2b] dark:bg-[#181a1b]">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#e7f1f6] text-[#075b8d] dark:bg-[#173442] dark:text-[#62afd6]">
+              <Play size={20} />
+            </div>
 
+            <h3 className="mt-4 text-base font-semibold">
+              No videos yet
+            </h3>
+
+            <p className="mt-1 text-sm text-[#777871] dark:text-[#969791]">
+              Be the first to upload a video to MANIT Tube.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {videos.map((video, index) => (
+              <TrendingCard
+                key={video._id}
+                video={video}
+                index={index}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Creators */}
 
       <section>
-
         <SectionHeading
           icon={Users}
           title="Popular creators"
@@ -477,9 +566,7 @@ function Home() {
             />
           ))}
         </div>
-
       </section>
-
     </div>
   );
 }
