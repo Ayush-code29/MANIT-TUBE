@@ -1,19 +1,41 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import {
   Bookmark,
+  Loader2,
   MoreHorizontal,
+  Send,
   Share2,
   ThumbsUp,
+  Trash2,
 } from "lucide-react";
+
 import {
   Link,
+  useNavigate,
   useParams,
 } from "react-router-dom";
 
-import { getVideoById } from "../api/videoApi";
+import {
+  addComment,
+  deleteComment,
+  getComments,
+  getLikeStatus,
+  getSaveStatus,
+  getVideoById,
+  likeVideo,
+  saveVideo,
+  unlikeVideo,
+  unsaveVideo,
+} from "../api/videoApi";
 
-function formatViews(views) {
-  const count = Number(views) || 0;
+import { useAuth } from "../context/AuthContext";
+
+function formatViews(value) {
+  const count = Number(value) || 0;
 
   if (count >= 1000000) {
     return `${(count / 1000000).toFixed(1)}M`;
@@ -29,10 +51,8 @@ function formatViews(views) {
 function formatRelativeTime(date) {
   if (!date) return "";
 
-  const now = new Date();
-  const createdAt = new Date(date);
-
-  const difference = now - createdAt;
+  const difference =
+    new Date() - new Date(date);
 
   const minutes = Math.floor(
     difference / (1000 * 60)
@@ -46,31 +66,31 @@ function formatRelativeTime(date) {
     difference / (1000 * 60 * 60 * 24)
   );
 
-  const weeks = Math.floor(days / 7);
-
-  const months = Math.floor(days / 30);
-
-  if (minutes < 1) {
-    return "just now";
-  }
+  if (minutes < 1) return "just now";
 
   if (minutes < 60) {
-    return `${minutes} min${minutes !== 1 ? "s" : ""} ago`;
+    return `${minutes} min${
+      minutes !== 1 ? "s" : ""
+    } ago`;
   }
 
   if (hours < 24) {
-    return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+    return `${hours} hour${
+      hours !== 1 ? "s" : ""
+    } ago`;
   }
 
   if (days < 7) {
-    return `${days} day${days !== 1 ? "s" : ""} ago`;
+    return `${days} day${
+      days !== 1 ? "s" : ""
+    } ago`;
   }
 
-  if (weeks < 5) {
-    return `${weeks} week${weeks !== 1 ? "s" : ""} ago`;
-  }
+  const weeks = Math.floor(days / 7);
 
-  return `${months} month${months !== 1 ? "s" : ""} ago`;
+  return `${weeks} week${
+    weeks !== 1 ? "s" : ""
+  } ago`;
 }
 
 function LoadingWatch() {
@@ -87,30 +107,117 @@ function LoadingWatch() {
   );
 }
 
+function CommentItem({
+  comment,
+  onDelete,
+}) {
+  const user = comment.user;
+
+  return (
+    <div className="flex gap-3">
+      <img
+        src={
+          user?.avatar ||
+          "https://i.pravatar.cc/100?img=12"
+        }
+        alt=""
+        className="h-9 w-9 shrink-0 rounded-full object-cover"
+      />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold">
+            {user?.fullName ||
+              user?.username ||
+              "MANIT Student"}
+          </p>
+
+          <span className="text-[11px] text-[#85867f]">
+            {formatRelativeTime(
+              comment.createdAt
+            )}
+          </span>
+        </div>
+
+        <p className="mt-1 text-sm leading-6 text-[#666762] dark:text-[#a1a29d]">
+          {comment.content}
+        </p>
+
+        {comment.isOwner && (
+          <button
+            type="button"
+            onClick={() =>
+              onDelete(comment._id)
+            }
+            className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#85867f] transition hover:text-red-500"
+          >
+            <Trash2 size={13} />
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Watch() {
   const { videoId } = useParams();
 
+  const navigate = useNavigate();
+
+  const { user, loading: authLoading } =
+    useAuth();
+
   const [video, setVideo] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+
+  const [comments, setComments] = useState([]);
 
   const [liked, setLiked] = useState(false);
+
   const [saved, setSaved] = useState(false);
 
+  const [loading, setLoading] =
+    useState(true);
+
+  const [commentsLoading, setCommentsLoading] =
+    useState(true);
+
+  const [actionLoading, setActionLoading] =
+    useState(false);
+
+  const [commentLoading, setCommentLoading] =
+    useState(false);
+
+  const [commentText, setCommentText] =
+    useState("");
+
+  const [error, setError] = useState("");
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load video
+  |--------------------------------------------------------------------------
+  */
+
   useEffect(() => {
-    const fetchVideo = async () => {
+    const loadVideo = async () => {
       try {
         setLoading(true);
         setError("");
 
-        const data = await getVideoById(videoId);
+        const data =
+          await getVideoById(videoId);
 
         setVideo(data.video);
       } catch (error) {
-        console.error("Watch page error:", error);
+        console.error(
+          "Video loading error:",
+          error
+        );
 
         setError(
-          "Unable to load this video."
+          error.message ||
+            "Unable to load this video."
         );
       } finally {
         setLoading(false);
@@ -118,13 +225,351 @@ export default function Watch() {
     };
 
     if (videoId) {
-      fetchVideo();
+      loadVideo();
     }
   }, [videoId]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load comments
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    const loadComments = async () => {
+      try {
+        setCommentsLoading(true);
+
+        const data =
+          await getComments(videoId);
+
+        setComments(
+          Array.isArray(data.comments)
+            ? data.comments
+            : []
+        );
+      } catch (error) {
+        console.error(
+          "Comments error:",
+          error
+        );
+      } finally {
+        setCommentsLoading(false);
+      }
+    };
+
+    if (videoId) {
+      loadComments();
+    }
+  }, [videoId]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Load like + save status
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANT:
+  | Like status is loaded independently from
+  | authentication.
+  |
+  | This means logged-out users can still
+  | see the total number of likes.
+  |
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    if (!videoId || authLoading) {
+      return;
+    }
+
+    const loadStatuses = async () => {
+      try {
+        const likeData =
+          await getLikeStatus(videoId);
+
+        /*
+         * RESTORE LIKE STATE
+         */
+        setLiked(
+          Boolean(
+            likeData?.liked ??
+              likeData?.isLiked ??
+              false
+          )
+        );
+
+        /*
+         * RESTORE ACTUAL LIKE COUNT
+         *
+         * This is the important fix.
+         */
+        if (
+          typeof likeData?.likesCount ===
+          "number"
+        ) {
+          setVideo((current) =>
+            current
+              ? {
+                  ...current,
+                  likes:
+                    likeData.likesCount,
+                }
+              : current
+          );
+        }
+
+        /*
+         * SAVE STATUS only for logged-in users
+         */
+        if (user) {
+          const saveData =
+            await getSaveStatus(videoId);
+
+          setSaved(
+            Boolean(
+              saveData?.isSaved ??
+                saveData?.saved ??
+                false
+            )
+          );
+        } else {
+          setSaved(false);
+        }
+      } catch (error) {
+        console.error(
+          "Status loading error:",
+          error
+        );
+      }
+    };
+
+    loadStatuses();
+  }, [videoId, user, authLoading]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Login redirect
+  |--------------------------------------------------------------------------
+  */
+
+  const requireLogin = () => {
+    navigate(
+      `/login?redirect=/watch/${videoId}`
+    );
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | LIKE / UNLIKE
+  |--------------------------------------------------------------------------
+  */
+
+  const handleLike = async () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
+
+    if (actionLoading) return;
+
+    try {
+      setActionLoading(true);
+
+      if (liked) {
+        const data =
+          await unlikeVideo(videoId);
+
+        setLiked(false);
+
+        setVideo((current) =>
+          current
+            ? {
+                ...current,
+                likes:
+                  typeof data?.likesCount ===
+                  "number"
+                    ? data.likesCount
+                    : Math.max(
+                        0,
+                        (current.likes ||
+                          0) - 1
+                      ),
+              }
+            : current
+        );
+      } else {
+        const data =
+          await likeVideo(videoId);
+
+        setLiked(true);
+
+        setVideo((current) =>
+          current
+            ? {
+                ...current,
+                likes:
+                  typeof data?.likesCount ===
+                  "number"
+                    ? data.likesCount
+                    : (current.likes ||
+                        0) + 1,
+              }
+            : current
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Like action error:",
+        error
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | SAVE / UNSAVE
+  |--------------------------------------------------------------------------
+  */
+
+  const handleSave = async () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
+
+    if (actionLoading) return;
+
+    try {
+      setActionLoading(true);
+
+      if (saved) {
+        await unsaveVideo(videoId);
+        setSaved(false);
+      } else {
+        await saveVideo(videoId);
+        setSaved(true);
+      }
+    } catch (error) {
+      console.error(
+        "Save action error:",
+        error
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | ADD COMMENT
+  |--------------------------------------------------------------------------
+  */
+
+  const handleComment = async (event) => {
+    event.preventDefault();
+
+    if (!user) {
+      requireLogin();
+      return;
+    }
+
+    if (!commentText.trim()) {
+      return;
+    }
+
+    try {
+      setCommentLoading(true);
+
+      const data = await addComment(
+        videoId,
+        commentText.trim()
+      );
+
+      if (data?.comment) {
+        setComments((current) => [
+          data.comment,
+          ...current,
+        ]);
+      }
+
+      setCommentText("");
+    } catch (error) {
+      console.error(
+        "Comment error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to add comment."
+      );
+    } finally {
+      setCommentLoading(false);
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | DELETE COMMENT
+  |--------------------------------------------------------------------------
+  */
+
+  const handleDeleteComment = async (
+    commentId
+  ) => {
+    try {
+      await deleteComment(commentId);
+
+      setComments((current) =>
+        current.filter(
+          (comment) =>
+            comment._id !== commentId
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Delete comment error:",
+        error
+      );
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | SHARE
+  |--------------------------------------------------------------------------
+  */
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        window.location.href
+      );
+
+      alert("Video link copied!");
+    } catch {
+      alert("Unable to copy link.");
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Loading
+  |--------------------------------------------------------------------------
+  */
 
   if (loading) {
     return <LoadingWatch />;
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Error
+  |--------------------------------------------------------------------------
+  */
 
   if (error || !video) {
     return (
@@ -136,12 +581,12 @@ export default function Watch() {
 
           <p className="mt-2 text-sm text-gray-500">
             {error ||
-              "This video may have been removed or does not exist."}
+              "This video may have been removed."}
           </p>
 
           <Link
             to="/"
-            className="mt-6 inline-flex rounded-lg bg-[#22C55E] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#16A34A]"
+            className="mt-6 inline-flex rounded-lg bg-[#075b8d] px-5 py-2.5 text-sm font-semibold text-white"
           >
             Back to Home
           </Link>
@@ -150,22 +595,18 @@ export default function Watch() {
     );
   }
 
-  const creatorName =
+  const creator =
     video.owner?.fullName ||
     video.owner?.username ||
     "MANIT Student";
 
-  const creatorUsername =
-    video.owner?.username || "";
-
-  const creatorAvatar =
+  const avatar =
     video.owner?.avatar ||
     "https://i.pravatar.cc/100?img=12";
 
   return (
-    <div className="mx-auto max-w-[1400px]">
-
-      {/* Video */}
+    <div className="mx-auto max-w-[1400px] pb-16">
+      {/* VIDEO */}
 
       <div className="aspect-video overflow-hidden rounded-2xl border border-[#24282E] bg-black shadow-2xl">
         <video
@@ -177,115 +618,115 @@ export default function Watch() {
         />
       </div>
 
-      {/* Video Info */}
+      {/* TITLE */}
 
       <div className="mt-6">
-
         <h1 className="text-xl font-bold leading-7 sm:text-2xl">
           {video.title}
         </h1>
 
+        {/* CREATOR + ACTIONS */}
+
         <div className="mt-4 flex flex-col gap-4 border-b border-[#24282E] pb-5 lg:flex-row lg:items-center lg:justify-between">
-
-          {/* Creator */}
-
           <div className="flex items-center gap-3">
-
             <img
-              src={creatorAvatar}
+              src={avatar}
+              alt={creator}
               className="h-11 w-11 rounded-full object-cover"
-              alt={creatorName}
             />
 
             <div>
-
               <Link
-                to={`/channel/${creatorUsername}`}
-                className="text-sm font-semibold hover:text-[#22C55E]"
+                to={`/channel/${
+                  video.owner?.username ||
+                  ""
+                }`}
+                className="text-sm font-semibold hover:text-[#075b8d]"
               >
-                {creatorName}
+                {creator}
               </Link>
 
               <p className="text-xs text-gray-600">
                 MANIT Tube Creator
               </p>
-
             </div>
-
-            <button className="ml-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black transition hover:bg-gray-200">
-              Subscribe
-            </button>
-
           </div>
 
-          {/* Actions */}
-
           <div className="flex items-center gap-2 overflow-x-auto">
+            {/* LIKE */}
 
             <button
-              onClick={() => setLiked(!liked)}
+              type="button"
+              onClick={handleLike}
+              disabled={actionLoading}
               className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition ${
                 liked
-                  ? "bg-[#22C55E] text-black"
-                  : "bg-[#181C21] text-gray-300 hover:bg-[#22272E] hover:text-white"
+                  ? "bg-[#075b8d] text-white"
+                  : "bg-[#181C21] text-gray-300 hover:bg-[#22272E]"
               }`}
             >
               <ThumbsUp
                 size={17}
-                fill={liked ? "currentColor" : "none"}
+                fill={
+                  liked
+                    ? "currentColor"
+                    : "none"
+                }
               />
 
-              {liked ? "Liked" : "Like"}
+              {formatViews(
+                video.likes || 0
+              )}
             </button>
 
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(
-                    window.location.href
-                  );
+            {/* SHARE */}
 
-                  alert("Video link copied!");
-                } catch (error) {
-                  console.log(error);
-                }
-              }}
-              className="flex items-center gap-2 rounded-full bg-[#181C21] px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-[#22272E] hover:text-white"
+            <button
+              type="button"
+              onClick={handleShare}
+              className="flex items-center gap-2 rounded-full bg-[#181C21] px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-[#22272E]"
             >
               <Share2 size={17} />
               Share
             </button>
 
+            {/* SAVE */}
+
             <button
-              onClick={() => setSaved(!saved)}
+              type="button"
+              onClick={handleSave}
+              disabled={actionLoading}
               className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition ${
                 saved
-                  ? "bg-[#22C55E] text-black"
-                  : "bg-[#181C21] text-gray-300 hover:bg-[#22272E] hover:text-white"
+                  ? "bg-[#075b8d] text-white"
+                  : "bg-[#181C21] text-gray-300 hover:bg-[#22272E]"
               }`}
             >
               <Bookmark
                 size={17}
-                fill={saved ? "currentColor" : "none"}
+                fill={
+                  saved
+                    ? "currentColor"
+                    : "none"
+                }
               />
 
               {saved ? "Saved" : "Save"}
             </button>
 
-            <button className="rounded-full bg-[#181C21] p-2.5 text-gray-400 hover:text-white">
+            <button
+              type="button"
+              className="rounded-full bg-[#181C21] p-2.5 text-gray-400 hover:text-white"
+            >
               <MoreHorizontal size={18} />
             </button>
-
           </div>
-
         </div>
 
-        {/* Description */}
+        {/* DESCRIPTION */}
 
         <div className="mt-5 rounded-2xl bg-[#111418] p-4">
-
           <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
-
             <span>
               {formatViews(video.views)} views
             </span>
@@ -293,51 +734,123 @@ export default function Watch() {
             <span>•</span>
 
             <span>
-              {formatRelativeTime(video.createdAt)}
+              {formatRelativeTime(
+                video.createdAt
+              )}
             </span>
 
+            <span>•</span>
+
+            <span>
+              {formatViews(video.likes || 0)}{" "}
+              likes
+            </span>
           </div>
 
           <p className="mt-3 max-w-4xl whitespace-pre-line text-sm leading-6 text-gray-400">
             {video.description}
           </p>
-
         </div>
 
-        {/* Comments */}
+        {/* COMMENTS */}
 
         <section className="mt-8">
-
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold">
               Comments
             </h2>
 
             <span className="text-sm text-gray-600">
-              0
+              {comments.length}
             </span>
           </div>
 
-          <div className="mt-5 flex gap-3">
+          <form
+            onSubmit={handleComment}
+            className="mt-5 flex gap-3"
+          >
+            <img
+              src={
+                user?.avatar ||
+                "https://i.pravatar.cc/100?img=12"
+              }
+              alt=""
+              className="h-9 w-9 shrink-0 rounded-full object-cover"
+            />
 
-            <div className="h-9 w-9 shrink-0 rounded-full bg-[#22C55E]" />
-
-            <div className="flex-1">
-
+            <div className="flex flex-1 gap-2">
               <input
-                type="text"
-                placeholder="Add a comment..."
-                className="w-full border-b border-[#2A3037] bg-transparent pb-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-[#22C55E]"
+                value={commentText}
+                onChange={(event) =>
+                  setCommentText(
+                    event.target.value
+                  )
+                }
+                onFocus={() => {
+                  if (!user) {
+                    requireLogin();
+                  }
+                }}
+                placeholder={
+                  user
+                    ? "Add a comment..."
+                    : "Login to comment..."
+                }
+                className="min-w-0 flex-1 border-b border-[#2A3037] bg-transparent pb-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-[#075b8d]"
               />
 
+              <button
+                type="submit"
+                disabled={
+                  commentLoading ||
+                  !commentText.trim()
+                }
+                className="mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#075b8d] text-white transition hover:bg-[#064d77] disabled:opacity-40"
+              >
+                {commentLoading ? (
+                  <Loader2
+                    size={15}
+                    className="animate-spin"
+                  />
+                ) : (
+                  <Send size={15} />
+                )}
+              </button>
             </div>
+          </form>
 
+          <div className="mt-8 space-y-7">
+            {commentsLoading ? (
+              <>
+                <div className="h-12 animate-pulse rounded bg-[#181C21]" />
+
+                <div className="h-12 animate-pulse rounded bg-[#181C21]" />
+              </>
+            ) : comments.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-[#85867f]">
+                  No comments yet.
+                </p>
+
+                <p className="mt-1 text-xs text-[#555853]">
+                  Be the first one to start the
+                  conversation.
+                </p>
+              </div>
+            ) : (
+              comments.map((comment) => (
+                <CommentItem
+                  key={comment._id}
+                  comment={comment}
+                  onDelete={
+                    handleDeleteComment
+                  }
+                />
+              ))
+            )}
           </div>
-
         </section>
-
       </div>
-
     </div>
   );
 }

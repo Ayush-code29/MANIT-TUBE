@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const videoSchema = new mongoose.Schema(
   {
     title: {
@@ -33,6 +34,13 @@ const videoSchema = new mongoose.Schema(
       default: 0,
     },
 
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
     isPublished: {
       type: Boolean,
       default: true,
@@ -49,6 +57,7 @@ const videoSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
 const Video = mongoose.model("Video", videoSchema);
 
 export default Video;
