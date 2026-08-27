@@ -1,12 +1,32 @@
-const API_URL = "http://localhost:8000/api/v1";
+const API_URL =
+  "http://localhost:8000/api/v1";
 
-async function parseResponse(response) {
-  const data = await response.json().catch(() => ({}));
+/*
+|--------------------------------------------------------------------------
+| HELPER
+|--------------------------------------------------------------------------
+*/
+
+async function apiRequest(
+  url,
+  options = {}
+) {
+  const response = await fetch(url, {
+    credentials: "include",
+    ...options,
+  });
+
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
 
   if (!response.ok) {
     throw new Error(
-      data?.message ||
-        data?.error ||
+      data.message ||
         "Something went wrong"
     );
   }
@@ -14,142 +34,86 @@ async function parseResponse(response) {
   return data;
 }
 
-/* =========================================================
-   VIDEOS
-========================================================= */
+/*
+|--------------------------------------------------------------------------
+| VIDEOS
+|--------------------------------------------------------------------------
+*/
 
-export const getVideos = async (
-  page = 1,
-  limit = 12
-) => {
-  const response = await fetch(
-    `${API_URL}/videos?page=${page}&limit=${limit}`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
+export async function getVideos() {
+  return apiRequest(
+    `${API_URL}/videos`
   );
+}
 
-  return parseResponse(response);
-};
-
-export const getVideoById = async (videoId) => {
-  const response = await fetch(
-    `${API_URL}/videos/${videoId}`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
+export async function getVideoById(videoId) {
+  return apiRequest(
+    `${API_URL}/videos/${videoId}`
   );
+}
 
-  return parseResponse(response);
-};
-
-export const uploadVideo = async ({
-  title,
-  description,
-  duration,
-  videoFile,
-  thumbnail,
-}) => {
-  const formData = new FormData();
-
-  formData.append("title", title);
-  formData.append("description", description);
-  formData.append("duration", duration);
-  formData.append("videoFile", videoFile);
-  formData.append("thumbnail", thumbnail);
-
-  const response = await fetch(
-    `${API_URL}/videos/upload`,
+export async function uploadVideo(formData) {
+  return apiRequest(
+    `${API_URL}/videos`,
     {
       method: "POST",
-      credentials: "include",
       body: formData,
     }
   );
+}
 
-  return parseResponse(response);
-};
+/*
+|--------------------------------------------------------------------------
+| LIKES
+|--------------------------------------------------------------------------
+*/
 
-/* =========================================================
-   LIKES
-========================================================= */
+export async function getLikeStatus(
+  videoId
+) {
+  return apiRequest(
+    `${API_URL}/likes/${videoId}`
+  );
+}
 
-export const likeVideo = async (videoId) => {
-  const response = await fetch(
+export async function likeVideo(videoId) {
+  return apiRequest(
     `${API_URL}/likes/${videoId}`,
     {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
     }
   );
+}
 
-  return parseResponse(response);
-};
-
-export const unlikeVideo = async (videoId) => {
-  const response = await fetch(
+export async function unlikeVideo(videoId) {
+  return apiRequest(
     `${API_URL}/likes/${videoId}`,
     {
       method: "DELETE",
-      credentials: "include",
     }
   );
-
-  return parseResponse(response);
-};
-
-export const getLikeStatus = async (videoId) => {
-  const response = await fetch(
-    `${API_URL}/likes/${videoId}`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
-  );
-
-  return parseResponse(response);
-};
+}
 
 /*
-  Alias kept intentionally so older components
-  using getVideoLikeStatus don't break.
+|--------------------------------------------------------------------------
+| COMMENTS
+|--------------------------------------------------------------------------
 */
-export const getVideoLikeStatus = async (
-  videoId
-) => {
-  return getLikeStatus(videoId);
-};
 
-/* =========================================================
-   COMMENTS
-========================================================= */
-
-export const getComments = async (videoId) => {
-  const response = await fetch(
-    `${API_URL}/comments/${videoId}`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
+export async function getComments(videoId) {
+  return apiRequest(
+    `${API_URL}/comments/${videoId}`
   );
+}
 
-  return parseResponse(response);
-};
-
-export const addComment = async (
+export async function addComment(
   videoId,
   content
-) => {
-  const response = await fetch(
+) {
+  return apiRequest(
     `${API_URL}/comments/${videoId}`,
     {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -158,114 +122,89 @@ export const addComment = async (
       }),
     }
   );
+}
 
-  return parseResponse(response);
-};
-
-export const deleteComment = async (
+export async function deleteComment(
   commentId
-) => {
-  const response = await fetch(
+) {
+  return apiRequest(
     `${API_URL}/comments/${commentId}`,
     {
       method: "DELETE",
-      credentials: "include",
     }
   );
+}
 
-  return parseResponse(response);
-};
+/*
+|--------------------------------------------------------------------------
+| SAVED VIDEOS
+|--------------------------------------------------------------------------
+*/
 
-/* =========================================================
-   SAVED VIDEOS
-========================================================= */
+export async function getSaveStatus(
+  videoId
+) {
+  return apiRequest(
+    `${API_URL}/saves/${videoId}`
+  );
+}
 
-export const saveVideo = async (videoId) => {
-  const response = await fetch(
+export async function saveVideo(videoId) {
+  return apiRequest(
     `${API_URL}/saves/${videoId}`,
     {
       method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
     }
   );
+}
 
-  return parseResponse(response);
-};
-
-export const unsaveVideo = async (videoId) => {
-  const response = await fetch(
+export async function unsaveVideo(videoId) {
+  return apiRequest(
     `${API_URL}/saves/${videoId}`,
     {
       method: "DELETE",
-      credentials: "include",
     }
   );
+}
 
-  return parseResponse(response);
-};
-
-export const getSaveStatus = async (videoId) => {
-  const response = await fetch(
-    `${API_URL}/saves/${videoId}`,
-    {
-      method: "GET",
-      credentials: "include",
-    }
+export async function getSavedVideos() {
+  return apiRequest(
+    `${API_URL}/saves`
   );
-
-  return parseResponse(response);
-};
+}
 
 /*
-  IMPORTANT:
-  This is the missing export causing your
-  current error.
+|--------------------------------------------------------------------------
+| SUBSCRIPTIONS
+|--------------------------------------------------------------------------
 */
-export const getSavedVideos = async () => {
-  const response = await fetch(
-    `${API_URL}/saves`,
+
+export async function getSubscriptionStatus(
+  channelId
+) {
+  return apiRequest(
+    `${API_URL}/subscriptions/${channelId}`
+  );
+}
+
+export async function subscribeChannel(
+  channelId
+) {
+  return apiRequest(
+    `${API_URL}/subscriptions/${channelId}`,
     {
-      method: "GET",
-      credentials: "include",
+      method: "POST",
     }
   );
+}
 
-  return parseResponse(response);
-};
-
-/*
-  Alias for components that may use a different name.
-*/
-export const getSavedVideoStatus = async (
-  videoId
-) => {
-  return getSaveStatus(videoId);
-};
-
-/* =========================================================
-   DEFAULT EXPORT
-========================================================= */
-
-export default {
-  getVideos,
-  getVideoById,
-  uploadVideo,
-
-  likeVideo,
-  unlikeVideo,
-  getLikeStatus,
-  getVideoLikeStatus,
-
-  getComments,
-  addComment,
-  deleteComment,
-
-  saveVideo,
-  unsaveVideo,
-  getSaveStatus,
-  getSavedVideos,
-  getSavedVideoStatus,
-};
+export async function unsubscribeChannel(
+  channelId
+) {
+  return apiRequest(
+    `${API_URL}/subscriptions/${channelId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}

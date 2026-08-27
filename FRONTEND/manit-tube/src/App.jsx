@@ -7,6 +7,9 @@ import Watch from "./pages/Watch";
 import Upload from "./pages/Upload";
 import Saved from "./pages/Saved";
 
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
 function Placeholder({ title }) {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
@@ -20,27 +23,52 @@ function Placeholder({ title }) {
 function App() {
   return (
     <Routes>
+      {/* ================================
+          AUTH ROUTES
+          These routes are outside
+          MainLayout
+      ================================= */}
+
+      <Route
+        path="/login"
+        element={<Login />}
+      />
+
+      <Route
+        path="/register"
+        element={<Register />}
+      />
+
+      {/* ================================
+          MAIN APPLICATION
+      ================================= */}
+
       <Route element={<MainLayout />}>
+        {/* Home */}
         <Route
           path="/"
           element={<Home />}
         />
 
+        {/* Watch Video */}
         <Route
           path="/watch/:videoId"
           element={<Watch />}
         />
 
+        {/* Upload */}
         <Route
           path="/upload"
           element={<Upload />}
         />
 
+        {/* Saved Videos */}
         <Route
           path="/saved"
           element={<Saved />}
         />
 
+        {/* Search / Explore */}
         <Route
           path="/search"
           element={
@@ -48,6 +76,7 @@ function App() {
           }
         />
 
+        {/* History */}
         <Route
           path="/history"
           element={
@@ -55,6 +84,7 @@ function App() {
           }
         />
 
+        {/* Playlists */}
         <Route
           path="/playlists"
           element={
@@ -62,6 +92,10 @@ function App() {
           }
         />
       </Route>
+
+      {/* ================================
+          404
+      ================================= */}
 
       <Route
         path="*"

@@ -11,6 +11,8 @@ import {
   Share2,
   ThumbsUp,
   Trash2,
+  Bell,
+  BellOff,
 } from "lucide-react";
 
 import {
@@ -25,14 +27,23 @@ import {
   getComments,
   getLikeStatus,
   getSaveStatus,
+  getSubscriptionStatus,
   getVideoById,
   likeVideo,
   saveVideo,
+  subscribeChannel,
   unlikeVideo,
+  unsubscribeChannel,
   unsaveVideo,
 } from "../api/videoApi";
 
 import { useAuth } from "../context/AuthContext";
+
+/*
+|--------------------------------------------------------------------------
+| FORMAT VIEWS
+|--------------------------------------------------------------------------
+*/
 
 function formatViews(value) {
   const count = Number(value) || 0;
@@ -47,6 +58,12 @@ function formatViews(value) {
 
   return count.toString();
 }
+
+/*
+|--------------------------------------------------------------------------
+| RELATIVE TIME
+|--------------------------------------------------------------------------
+*/
 
 function formatRelativeTime(date) {
   if (!date) return "";
@@ -66,7 +83,9 @@ function formatRelativeTime(date) {
     difference / (1000 * 60 * 60 * 24)
   );
 
-  if (minutes < 1) return "just now";
+  if (minutes < 1) {
+    return "just now";
+  }
 
   if (minutes < 60) {
     return `${minutes} min${
@@ -93,6 +112,12 @@ function formatRelativeTime(date) {
   } ago`;
 }
 
+/*
+|--------------------------------------------------------------------------
+| LOADING
+|--------------------------------------------------------------------------
+*/
+
 function LoadingWatch() {
   return (
     <div className="mx-auto max-w-[1400px] animate-pulse">
@@ -106,6 +131,12 @@ function LoadingWatch() {
     </div>
   );
 }
+
+/*
+|--------------------------------------------------------------------------
+| COMMENT ITEM
+|--------------------------------------------------------------------------
+*/
 
 function CommentItem({
   comment,
@@ -160,42 +191,74 @@ function CommentItem({
   );
 }
 
+/*
+|--------------------------------------------------------------------------
+| WATCH PAGE
+|--------------------------------------------------------------------------
+*/
+
 export default function Watch() {
   const { videoId } = useParams();
 
   const navigate = useNavigate();
 
-  const { user, loading: authLoading } =
-    useAuth();
+  const {
+    user,
+    loading: authLoading,
+  } = useAuth();
 
-  const [video, setVideo] = useState(null);
+  const [video, setVideo] =
+    useState(null);
 
-  const [comments, setComments] = useState([]);
+  const [comments, setComments] =
+    useState([]);
 
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] =
+    useState(false);
 
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] =
+    useState(false);
+
+  const [subscribed, setSubscribed] =
+    useState(false);
+
+  const [subscriberCount, setSubscriberCount] =
+    useState(0);
 
   const [loading, setLoading] =
     useState(true);
 
-  const [commentsLoading, setCommentsLoading] =
-    useState(true);
+  const [
+    commentsLoading,
+    setCommentsLoading,
+  ] = useState(true);
 
-  const [actionLoading, setActionLoading] =
-    useState(false);
+  const [
+    actionLoading,
+    setActionLoading,
+  ] = useState(false);
 
-  const [commentLoading, setCommentLoading] =
-    useState(false);
+  const [
+    subscribeLoading,
+    setSubscribeLoading,
+  ] = useState(false);
 
-  const [commentText, setCommentText] =
+  const [
+    commentLoading,
+    setCommentLoading,
+  ] = useState(false);
+
+  const [
+    commentText,
+    setCommentText,
+  ] = useState("");
+
+  const [error, setError] =
     useState("");
-
-  const [error, setError] = useState("");
 
   /*
   |--------------------------------------------------------------------------
-  | Load video
+  | LOAD VIDEO
   |--------------------------------------------------------------------------
   */
 
@@ -231,7 +294,7 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | Load comments
+  | LOAD COMMENTS
   |--------------------------------------------------------------------------
   */
 
@@ -265,16 +328,7 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | Load like + save status
-  |--------------------------------------------------------------------------
-  |
-  | IMPORTANT:
-  | Like status is loaded independently from
-  | authentication.
-  |
-  | This means logged-out users can still
-  | see the total number of likes.
-  |
+  | LOAD LIKE / SAVE / SUBSCRIBE STATUS
   |--------------------------------------------------------------------------
   */
 
@@ -285,12 +339,15 @@ export default function Watch() {
 
     const loadStatuses = async () => {
       try {
+        /*
+        ------------------------------------------
+        LIKE STATUS
+        ------------------------------------------
+        */
+
         const likeData =
           await getLikeStatus(videoId);
 
-        /*
-         * RESTORE LIKE STATE
-         */
         setLiked(
           Boolean(
             likeData?.liked ??
@@ -299,11 +356,6 @@ export default function Watch() {
           )
         );
 
-        /*
-         * RESTORE ACTUAL LIKE COUNT
-         *
-         * This is the important fix.
-         */
         if (
           typeof likeData?.likesCount ===
           "number"
@@ -320,8 +372,11 @@ export default function Watch() {
         }
 
         /*
-         * SAVE STATUS only for logged-in users
-         */
+        ------------------------------------------
+        SAVE STATUS
+        ------------------------------------------
+        */
+
         if (user) {
           const saveData =
             await getSaveStatus(videoId);
@@ -336,6 +391,35 @@ export default function Watch() {
         } else {
           setSaved(false);
         }
+
+        /*
+        ------------------------------------------
+        SUBSCRIPTION STATUS
+        ------------------------------------------
+        */
+
+        const channelId =
+          video?.owner?._id;
+
+        if (channelId) {
+          const subscriptionData =
+            await getSubscriptionStatus(
+              channelId
+            );
+
+          setSubscriberCount(
+            Number(
+              subscriptionData?.subscriberCount ||
+                0
+            )
+          );
+
+          setSubscribed(
+            Boolean(
+              subscriptionData?.subscribed
+            )
+          );
+        }
       } catch (error) {
         console.error(
           "Status loading error:",
@@ -344,12 +428,23 @@ export default function Watch() {
       }
     };
 
-    loadStatuses();
-  }, [videoId, user, authLoading]);
+    /*
+    Video owner may not be loaded yet.
+    */
+
+    if (video) {
+      loadStatuses();
+    }
+  }, [
+    videoId,
+    user,
+    authLoading,
+    video,
+  ]);
 
   /*
   |--------------------------------------------------------------------------
-  | Login redirect
+  | LOGIN REDIRECT
   |--------------------------------------------------------------------------
   */
 
@@ -361,7 +456,7 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | LIKE / UNLIKE
+  | LIKE
   |--------------------------------------------------------------------------
   */
 
@@ -412,8 +507,8 @@ export default function Watch() {
                   typeof data?.likesCount ===
                   "number"
                     ? data.likesCount
-                    : (current.likes ||
-                        0) + 1,
+                    : (current.likes || 0) +
+                      1,
               }
             : current
         );
@@ -430,7 +525,7 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | SAVE / UNSAVE
+  | SAVE
   |--------------------------------------------------------------------------
   */
 
@@ -464,11 +559,100 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | ADD COMMENT
+  | SUBSCRIBE
   |--------------------------------------------------------------------------
   */
 
-  const handleComment = async (event) => {
+  const handleSubscribe = async () => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
+
+    const channelId =
+      video?.owner?._id;
+
+    if (!channelId) {
+      return;
+    }
+
+    if (user?._id === channelId) {
+      return;
+    }
+
+    if (subscribeLoading) {
+      return;
+    }
+
+    try {
+      setSubscribeLoading(true);
+
+      if (subscribed) {
+        const data =
+          await unsubscribeChannel(
+            channelId
+          );
+
+        setSubscribed(false);
+
+        if (
+          typeof data?.subscriberCount ===
+          "number"
+        ) {
+          setSubscriberCount(
+            data.subscriberCount
+          );
+        } else {
+          setSubscriberCount(
+            (current) =>
+              Math.max(0, current - 1)
+          );
+        }
+      } else {
+        const data =
+          await subscribeChannel(
+            channelId
+          );
+
+        setSubscribed(true);
+
+        if (
+          typeof data?.subscriberCount ===
+          "number"
+        ) {
+          setSubscriberCount(
+            data.subscriberCount
+          );
+        } else {
+          setSubscriberCount(
+            (current) => current + 1
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Subscribe action error:",
+        error
+      );
+
+      alert(
+        error.message ||
+          "Unable to update subscription."
+      );
+    } finally {
+      setSubscribeLoading(false);
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | COMMENT
+  |--------------------------------------------------------------------------
+  */
+
+  const handleComment = async (
+    event
+  ) => {
     event.preventDefault();
 
     if (!user) {
@@ -483,10 +667,11 @@ export default function Watch() {
     try {
       setCommentLoading(true);
 
-      const data = await addComment(
-        videoId,
-        commentText.trim()
-      );
+      const data =
+        await addComment(
+          videoId,
+          commentText.trim()
+        );
 
       if (data?.comment) {
         setComments((current) => [
@@ -520,6 +705,11 @@ export default function Watch() {
   const handleDeleteComment = async (
     commentId
   ) => {
+    if (!user) {
+      requireLogin();
+      return;
+    }
+
     try {
       await deleteComment(commentId);
 
@@ -557,7 +747,7 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | Loading
+  | LOADING
   |--------------------------------------------------------------------------
   */
 
@@ -567,7 +757,7 @@ export default function Watch() {
 
   /*
   |--------------------------------------------------------------------------
-  | Error
+  | ERROR
   |--------------------------------------------------------------------------
   */
 
@@ -595,6 +785,12 @@ export default function Watch() {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | CREATOR
+  |--------------------------------------------------------------------------
+  */
+
   const creator =
     video.owner?.fullName ||
     video.owner?.username ||
@@ -603,6 +799,20 @@ export default function Watch() {
   const avatar =
     video.owner?.avatar ||
     "https://i.pravatar.cc/100?img=12";
+
+  const channelId =
+    video.owner?._id;
+
+  const isOwnChannel =
+    user &&
+    channelId &&
+    user._id === channelId;
+
+  /*
+  |--------------------------------------------------------------------------
+  | UI
+  |--------------------------------------------------------------------------
+  */
 
   return (
     <div className="mx-auto max-w-[1400px] pb-16">
@@ -618,9 +828,11 @@ export default function Watch() {
         />
       </div>
 
-      {/* TITLE */}
+      {/* CONTENT */}
 
       <div className="mt-6">
+        {/* TITLE */}
+
         <h1 className="text-xl font-bold leading-7 sm:text-2xl">
           {video.title}
         </h1>
@@ -628,6 +840,8 @@ export default function Watch() {
         {/* CREATOR + ACTIONS */}
 
         <div className="mt-4 flex flex-col gap-4 border-b border-[#24282E] pb-5 lg:flex-row lg:items-center lg:justify-between">
+          {/* CREATOR */}
+
           <div className="flex items-center gap-3">
             <img
               src={avatar}
@@ -638,19 +852,71 @@ export default function Watch() {
             <div>
               <Link
                 to={`/channel/${
-                  video.owner?.username ||
-                  ""
+                  video.owner?.username || ""
                 }`}
-                className="text-sm font-semibold hover:text-[#075b8d]"
+                className="text-sm font-semibold transition hover:text-[#22c55e]"
               >
                 {creator}
               </Link>
 
-              <p className="text-xs text-gray-600">
-                MANIT Tube Creator
-              </p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <p className="text-xs text-gray-600">
+                  MANIT Tube Creator
+                </p>
+
+                <span className="text-xs text-gray-700">
+                  •
+                </span>
+
+                <p className="text-xs text-gray-600">
+                  {formatViews(
+                    subscriberCount
+                  )}{" "}
+                  subscriber
+                  {subscriberCount !== 1
+                    ? "s"
+                    : ""}
+                </p>
+              </div>
             </div>
+
+            {/* SUBSCRIBE */}
+
+            {!isOwnChannel &&
+              channelId && (
+                <button
+                  type="button"
+                  onClick={
+                    handleSubscribe
+                  }
+                  disabled={
+                    subscribeLoading
+                  }
+                  className={`ml-1 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition ${
+                    subscribed
+                      ? "bg-[#181C21] text-gray-200 hover:bg-[#242A31]"
+                      : "bg-[#22c55e] text-black hover:bg-[#2bd66b]"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {subscribeLoading ? (
+                    <Loader2
+                      size={16}
+                      className="animate-spin"
+                    />
+                  ) : subscribed ? (
+                    <BellOff size={16} />
+                  ) : (
+                    <Bell size={16} />
+                  )}
+
+                  {subscribed
+                    ? "Subscribed"
+                    : "Subscribe"}
+                </button>
+              )}
           </div>
+
+          {/* ACTIONS */}
 
           <div className="flex items-center gap-2 overflow-x-auto">
             {/* LIKE */}
@@ -726,9 +992,12 @@ export default function Watch() {
         {/* DESCRIPTION */}
 
         <div className="mt-5 rounded-2xl bg-[#111418] p-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-400">
             <span>
-              {formatViews(video.views)} views
+              {formatViews(
+                video.views
+              )}{" "}
+              views
             </span>
 
             <span>•</span>
@@ -742,7 +1011,9 @@ export default function Watch() {
             <span>•</span>
 
             <span>
-              {formatViews(video.likes || 0)}{" "}
+              {formatViews(
+                video.likes || 0
+              )}{" "}
               likes
             </span>
           </div>
@@ -764,6 +1035,8 @@ export default function Watch() {
               {comments.length}
             </span>
           </div>
+
+          {/* COMMENT FORM */}
 
           <form
             onSubmit={handleComment}
@@ -819,6 +1092,8 @@ export default function Watch() {
             </div>
           </form>
 
+          {/* COMMENT LIST */}
+
           <div className="mt-8 space-y-7">
             {commentsLoading ? (
               <>
@@ -826,27 +1101,30 @@ export default function Watch() {
 
                 <div className="h-12 animate-pulse rounded bg-[#181C21]" />
               </>
-            ) : comments.length === 0 ? (
+            ) : comments.length ===
+              0 ? (
               <div className="py-8 text-center">
                 <p className="text-sm text-[#85867f]">
                   No comments yet.
                 </p>
 
                 <p className="mt-1 text-xs text-[#555853]">
-                  Be the first one to start the
-                  conversation.
+                  Be the first one to
+                  start the conversation.
                 </p>
               </div>
             ) : (
-              comments.map((comment) => (
-                <CommentItem
-                  key={comment._id}
-                  comment={comment}
-                  onDelete={
-                    handleDeleteComment
-                  }
-                />
-              ))
+              comments.map(
+                (comment) => (
+                  <CommentItem
+                    key={comment._id}
+                    comment={comment}
+                    onDelete={
+                      handleDeleteComment
+                    }
+                  />
+                )
+              )
             )}
           </div>
         </section>
