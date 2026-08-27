@@ -2,11 +2,12 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-import userRoutes from "./routes/user.routes.js";
-import videoRoutes from "./routes/video.routes.js";
-import commentRoutes from "./routes/comment.routes.js";
-import likeRoutes from "./routes/like.routes.js";
-import saveRoutes from "./routes/save.routes.js";
+import userRouter from "./routes/user.routes.js";
+import videoRouter from "./routes/video.routes.js";
+import commentRouter from "./routes/comment.routes.js";
+import likeRouter from "./routes/like.routes.js";
+import saveRouter from "./routes/save.routes.js";
+import subscriptionRouter from "./routes/subscription.routes.js";
 
 const app = express();
 
@@ -18,32 +19,49 @@ app.use(
 );
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+
 app.use(cookieParser());
+
+/*
+|--------------------------------------------------------------------------
+| API ROUTES
+|--------------------------------------------------------------------------
+*/
 
 app.use(
   "/api/v1/users",
-  userRoutes
+  userRouter
 );
 
 app.use(
   "/api/v1/videos",
-  videoRoutes
+  videoRouter
 );
 
 app.use(
   "/api/v1/comments",
-  commentRoutes
+  commentRouter
 );
 
 app.use(
   "/api/v1/likes",
-  likeRoutes
+  likeRouter
 );
 
 app.use(
   "/api/v1/saves",
-  saveRoutes
+  saveRouter
+);
+
+app.use(
+  "/api/v1/subscriptions",
+  subscriptionRouter
 );
 
 export default app;
