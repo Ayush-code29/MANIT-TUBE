@@ -1,6 +1,9 @@
 import { useState } from "react";
 
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+} from "framer-motion";
 
 import {
   Eye,
@@ -14,98 +17,111 @@ import {
 
 import {
   Link,
-  useLocation,
   useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 
 import { loginUser } from "../api/authApi";
-
 import AuthBackground from "../components/auth/AuthBackground";
+
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const location = useLocation();
+  const [searchParams] =
+    useSearchParams();
 
-  const [email, setEmail] = useState("");
+  const { login } = useAuth();
 
-  const [password, setPassword] = useState("");
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
 
   const [showPassword, setShowPassword] =
     useState(false);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] =
+    useState("");
 
-
-  // --------------------------------------------------
-  // WHERE DID THE USER COME FROM?
-  // --------------------------------------------------
-
-  const redirectTo =
-    location.state?.from || "/";
-
-
-  // --------------------------------------------------
-  // LOGIN
-  // --------------------------------------------------
+  /*
+   * If user was redirected to login from:
+   *
+   * /watch/:videoId
+   *
+   * we will return them there after login.
+   *
+   * Otherwise go to home.
+   */
+  const redirectPath =
+    searchParams.get("redirect") || "/";
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
-
     setSuccess("");
 
-
-    // ----------------------------------------------
-    // VALIDATION
-    // ----------------------------------------------
-
-    if (!email.trim() || !password) {
+    if (
+      !email.trim() ||
+      !password
+    ) {
       setError(
         "Please enter your email and password."
       );
-
       return;
     }
-
-
-    // ----------------------------------------------
-    // API LOGIN
-    // ----------------------------------------------
 
     try {
       setLoading(true);
 
-      await loginUser(
+      /*
+       * Login API
+       *
+       * This request must set the JWT cookie.
+       */
+      const data = await loginUser(
         email.trim().toLowerCase(),
         password
       );
 
-
-      // ----------------------------------------------
-      // SUCCESS MESSAGE
-      // ----------------------------------------------
+      /*
+       * VERY IMPORTANT:
+       *
+       * Update AuthContext after successful login.
+       *
+       * This fixes:
+       *
+       * - Header still showing Login
+       * - Like not working
+       * - Comment not working
+       * - Save not working
+       */
+      await login(data);
 
       setSuccess(
         "Welcome back. Redirecting..."
       );
 
-
-      // ----------------------------------------------
-      // REDIRECT
-      // ----------------------------------------------
-
+      /*
+       * Small delay so user can see success message.
+       */
       setTimeout(() => {
-        navigate(redirectTo, {
-          replace: true,
-        });
-      }, 600);
-
+        navigate(
+          redirectPath,
+          {
+            replace: true,
+          }
+        );
+      }, 500);
     } catch (error) {
       console.error(
         "Login error:",
@@ -114,25 +130,16 @@ export default function Login() {
 
       setError(
         error?.message ||
-          "Unable to login."
+          "Unable to login. Please check your credentials."
       );
     } finally {
       setLoading(false);
     }
   };
 
-
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
-
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 text-white">
-
       <AuthBackground />
-
-
-      {/* MAIN CONTAINER */}
 
       <motion.div
         initial={{
@@ -145,14 +152,16 @@ export default function Login() {
         }}
         transition={{
           duration: 0.5,
-          ease: [0.22, 1, 0.36, 1],
+          ease: [
+            0.22,
+            1,
+            0.36,
+            1,
+          ],
         }}
         className="w-full max-w-[430px]"
       >
-
-
-        {/* LOGO */}
-
+        {/* Logo */}
         <div className="mb-7 text-center">
           <Link
             to="/"
@@ -171,14 +180,9 @@ export default function Login() {
           </Link>
         </div>
 
-
-        {/* LOGIN CARD */}
-
+        {/* Login Card */}
         <div className="rounded-[28px] border border-white/[0.09] bg-white/[0.055] p-6 shadow-2xl shadow-black/30 backdrop-blur-2xl sm:p-8">
-
-
-          {/* HEADING */}
-
+          {/* Heading */}
           <div className="mb-8">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#22c55e]">
               Welcome back
@@ -189,22 +193,18 @@ export default function Login() {
             </h1>
 
             <p className="mt-2 text-sm leading-6 text-gray-500">
-              Continue watching and sharing
-              with the MANIT community.
+              Continue watching and
+              sharing with the MANIT
+              community.
             </p>
           </div>
 
-
-          {/* FORM */}
-
+          {/* Form */}
           <form
             onSubmit={handleSubmit}
             className="space-y-5"
           >
-
-
-            {/* EMAIL */}
-
+            {/* Email */}
             <div>
               <label className="mb-2 block text-xs font-semibold text-gray-300">
                 Email
@@ -232,16 +232,13 @@ export default function Login() {
               </div>
             </div>
 
-
-            {/* PASSWORD */}
-
+            {/* Password */}
             <div>
               <label className="mb-2 block text-xs font-semibold text-gray-300">
                 Password
               </label>
 
               <div className="relative">
-
                 <LockKeyhole
                   size={17}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600"
@@ -265,9 +262,6 @@ export default function Login() {
                   className="h-12 w-full rounded-xl border border-white/[0.08] bg-black/20 pl-11 pr-12 text-sm outline-none transition placeholder:text-gray-700 focus:border-[#22c55e]/60 focus:bg-black/30 disabled:cursor-not-allowed disabled:opacity-60"
                 />
 
-
-                {/* SHOW PASSWORD */}
-
                 <button
                   type="button"
                   disabled={loading}
@@ -277,7 +271,7 @@ export default function Login() {
                         !current
                     )
                   }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-gray-600 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-gray-600 transition hover:text-white disabled:opacity-50"
                 >
                   {showPassword ? (
                     <EyeOff size={17} />
@@ -288,11 +282,8 @@ export default function Login() {
               </div>
             </div>
 
-
-            {/* ERROR / SUCCESS */}
-
+            {/* Messages */}
             <AnimatePresence mode="wait">
-
               {error && (
                 <motion.div
                   initial={{
@@ -307,7 +298,7 @@ export default function Login() {
                     opacity: 0,
                     height: 0,
                   }}
-                  className="flex gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400"
+                  className="flex gap-2 overflow-hidden rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400"
                 >
                   <AlertCircle
                     size={16}
@@ -319,7 +310,6 @@ export default function Login() {
                   </span>
                 </motion.div>
               )}
-
 
               {success && (
                 <motion.div
@@ -335,7 +325,7 @@ export default function Login() {
                     opacity: 0,
                     height: 0,
                   }}
-                  className="flex gap-2 rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-400"
+                  className="flex gap-2 overflow-hidden rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-400"
                 >
                   <CheckCircle2
                     size={16}
@@ -347,12 +337,9 @@ export default function Login() {
                   </span>
                 </motion.div>
               )}
-
             </AnimatePresence>
 
-
-            {/* LOGIN BUTTON */}
-
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -369,20 +356,14 @@ export default function Login() {
                 />
               )}
             </button>
-
           </form>
 
-
-          {/* DIVIDER */}
-
+          {/* Divider */}
           <div className="my-7 h-px bg-white/[0.07]" />
 
-
-          {/* REGISTER */}
-
+          {/* Register */}
           <p className="text-center text-sm text-gray-500">
             Don't have an account?{" "}
-
             <Link
               to="/register"
               className="font-semibold text-white transition hover:text-[#22c55e]"
@@ -390,16 +371,13 @@ export default function Login() {
               Create one
             </Link>
           </p>
-
         </div>
 
-
-        {/* FOOTER */}
-
+        {/* Footer */}
         <p className="mt-6 text-center text-[11px] text-gray-700">
-          MANIT Tube · Built for the community
+          MANIT Tube · Built for the
+          community
         </p>
-
       </motion.div>
     </div>
   );

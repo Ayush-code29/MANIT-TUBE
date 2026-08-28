@@ -11,8 +11,6 @@ import {
   Share2,
   ThumbsUp,
   Trash2,
-  Bell,
-  BellOff,
 } from "lucide-react";
 
 import {
@@ -27,43 +25,34 @@ import {
   getComments,
   getLikeStatus,
   getSaveStatus,
-  getSubscriptionStatus,
   getVideoById,
   likeVideo,
   saveVideo,
-  subscribeChannel,
   unlikeVideo,
-  unsubscribeChannel,
   unsaveVideo,
 } from "../api/videoApi";
 
 import { useAuth } from "../context/AuthContext";
 
-/*
-|--------------------------------------------------------------------------
-| FORMAT VIEWS
-|--------------------------------------------------------------------------
-*/
+import { addToWatchHistory } from "../utils/history";
 
 function formatViews(value) {
   const count = Number(value) || 0;
 
   if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`;
+    return `${(count / 1000000).toFixed(
+      1
+    )}M`;
   }
 
   if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
+    return `${(count / 1000).toFixed(
+      1
+    )}K`;
   }
 
   return count.toString();
 }
-
-/*
-|--------------------------------------------------------------------------
-| RELATIVE TIME
-|--------------------------------------------------------------------------
-*/
 
 function formatRelativeTime(date) {
   if (!date) return "";
@@ -76,11 +65,13 @@ function formatRelativeTime(date) {
   );
 
   const hours = Math.floor(
-    difference / (1000 * 60 * 60)
+    difference /
+      (1000 * 60 * 60)
   );
 
   const days = Math.floor(
-    difference / (1000 * 60 * 60 * 24)
+    difference /
+      (1000 * 60 * 60 * 24)
   );
 
   if (minutes < 1) {
@@ -105,18 +96,14 @@ function formatRelativeTime(date) {
     } ago`;
   }
 
-  const weeks = Math.floor(days / 7);
+  const weeks = Math.floor(
+    days / 7
+  );
 
   return `${weeks} week${
     weeks !== 1 ? "s" : ""
   } ago`;
 }
-
-/*
-|--------------------------------------------------------------------------
-| LOADING
-|--------------------------------------------------------------------------
-*/
 
 function LoadingWatch() {
   return (
@@ -131,12 +118,6 @@ function LoadingWatch() {
     </div>
   );
 }
-
-/*
-|--------------------------------------------------------------------------
-| COMMENT ITEM
-|--------------------------------------------------------------------------
-*/
 
 function CommentItem({
   comment,
@@ -183,6 +164,7 @@ function CommentItem({
             className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#85867f] transition hover:text-red-500"
           >
             <Trash2 size={13} />
+
             Delete
           </button>
         )}
@@ -191,16 +173,12 @@ function CommentItem({
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| WATCH PAGE
-|--------------------------------------------------------------------------
-*/
-
 export default function Watch() {
-  const { videoId } = useParams();
+  const { videoId } =
+    useParams();
 
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   const {
     user,
@@ -219,12 +197,6 @@ export default function Watch() {
   const [saved, setSaved] =
     useState(false);
 
-  const [subscribed, setSubscribed] =
-    useState(false);
-
-  const [subscriberCount, setSubscriberCount] =
-    useState(0);
-
   const [loading, setLoading] =
     useState(true);
 
@@ -236,11 +208,6 @@ export default function Watch() {
   const [
     actionLoading,
     setActionLoading,
-  ] = useState(false);
-
-  const [
-    subscribeLoading,
-    setSubscribeLoading,
   ] = useState(false);
 
   const [
@@ -257,11 +224,8 @@ export default function Watch() {
     useState("");
 
   /*
-  |--------------------------------------------------------------------------
-  | LOAD VIDEO
-  |--------------------------------------------------------------------------
-  */
-
+   * Load video
+   */
   useEffect(() => {
     const loadVideo = async () => {
       try {
@@ -271,7 +235,22 @@ export default function Watch() {
         const data =
           await getVideoById(videoId);
 
-        setVideo(data.video);
+        const loadedVideo =
+          data?.video;
+
+        setVideo(
+          loadedVideo || null
+        );
+
+        /*
+         * Add video to history
+         * after successfully loading it.
+         */
+        if (loadedVideo?._id) {
+          addToWatchHistory(
+            loadedVideo
+          );
+        }
       } catch (error) {
         console.error(
           "Video loading error:",
@@ -293,33 +272,39 @@ export default function Watch() {
   }, [videoId]);
 
   /*
-  |--------------------------------------------------------------------------
-  | LOAD COMMENTS
-  |--------------------------------------------------------------------------
-  */
-
+   * Load comments
+   */
   useEffect(() => {
-    const loadComments = async () => {
-      try {
-        setCommentsLoading(true);
+    const loadComments =
+      async () => {
+        try {
+          setCommentsLoading(
+            true
+          );
 
-        const data =
-          await getComments(videoId);
+          const data =
+            await getComments(
+              videoId
+            );
 
-        setComments(
-          Array.isArray(data.comments)
-            ? data.comments
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "Comments error:",
-          error
-        );
-      } finally {
-        setCommentsLoading(false);
-      }
-    };
+          setComments(
+            Array.isArray(
+              data?.comments
+            )
+              ? data.comments
+              : []
+          );
+        } catch (error) {
+          console.error(
+            "Comments error:",
+            error
+          );
+        } finally {
+          setCommentsLoading(
+            false
+          );
+        }
+      };
 
     if (videoId) {
       loadComments();
@@ -327,127 +312,81 @@ export default function Watch() {
   }, [videoId]);
 
   /*
-  |--------------------------------------------------------------------------
-  | LOAD LIKE / SAVE / SUBSCRIBE STATUS
-  |--------------------------------------------------------------------------
-  */
-
+   * Load like + save status
+   */
   useEffect(() => {
-    if (!videoId || authLoading) {
+    if (
+      !videoId ||
+      authLoading
+    ) {
       return;
     }
 
-    const loadStatuses = async () => {
-      try {
-        /*
-        ------------------------------------------
-        LIKE STATUS
-        ------------------------------------------
-        */
+    const loadStatuses =
+      async () => {
+        try {
+          const likeData =
+            await getLikeStatus(
+              videoId
+            );
 
-        const likeData =
-          await getLikeStatus(videoId);
-
-        setLiked(
-          Boolean(
-            likeData?.liked ??
-              likeData?.isLiked ??
-              false
-          )
-        );
-
-        if (
-          typeof likeData?.likesCount ===
-          "number"
-        ) {
-          setVideo((current) =>
-            current
-              ? {
-                  ...current,
-                  likes:
-                    likeData.likesCount,
-                }
-              : current
-          );
-        }
-
-        /*
-        ------------------------------------------
-        SAVE STATUS
-        ------------------------------------------
-        */
-
-        if (user) {
-          const saveData =
-            await getSaveStatus(videoId);
-
-          setSaved(
+          setLiked(
             Boolean(
-              saveData?.isSaved ??
-                saveData?.saved ??
+              likeData?.liked ??
+                likeData?.isLiked ??
                 false
             )
           );
-        } else {
-          setSaved(false);
-        }
 
-        /*
-        ------------------------------------------
-        SUBSCRIPTION STATUS
-        ------------------------------------------
-        */
-
-        const channelId =
-          video?.owner?._id;
-
-        if (channelId) {
-          const subscriptionData =
-            await getSubscriptionStatus(
-              channelId
+          if (
+            typeof likeData?.likesCount ===
+            "number"
+          ) {
+            setVideo((current) =>
+              current
+                ? {
+                    ...current,
+                    likes:
+                      likeData.likesCount,
+                  }
+                : current
             );
+          }
 
-          setSubscriberCount(
-            Number(
-              subscriptionData?.subscriberCount ||
-                0
-            )
-          );
+          if (user) {
+            const saveData =
+              await getSaveStatus(
+                videoId
+              );
 
-          setSubscribed(
-            Boolean(
-              subscriptionData?.subscribed
-            )
+            setSaved(
+              Boolean(
+                saveData?.isSaved ??
+                  saveData?.saved ??
+                  false
+              )
+            );
+          } else {
+            setSaved(false);
+          }
+        } catch (error) {
+          console.error(
+            "Status loading error:",
+            error
           );
         }
-      } catch (error) {
-        console.error(
-          "Status loading error:",
-          error
-        );
-      }
-    };
+      };
 
-    /*
-    Video owner may not be loaded yet.
-    */
-
-    if (video) {
-      loadStatuses();
-    }
+    loadStatuses();
   }, [
     videoId,
     user,
     authLoading,
-    video,
   ]);
 
   /*
-  |--------------------------------------------------------------------------
-  | LOGIN REDIRECT
-  |--------------------------------------------------------------------------
-  */
-
+   * Login redirect
+   */
   const requireLogin = () => {
     navigate(
       `/login?redirect=/watch/${videoId}`
@@ -455,25 +394,26 @@ export default function Watch() {
   };
 
   /*
-  |--------------------------------------------------------------------------
-  | LIKE
-  |--------------------------------------------------------------------------
-  */
-
+   * Like / Unlike
+   */
   const handleLike = async () => {
     if (!user) {
       requireLogin();
       return;
     }
 
-    if (actionLoading) return;
+    if (actionLoading) {
+      return;
+    }
 
     try {
       setActionLoading(true);
 
       if (liked) {
         const data =
-          await unlikeVideo(videoId);
+          await unlikeVideo(
+            videoId
+          );
 
         setLiked(false);
 
@@ -495,7 +435,9 @@ export default function Watch() {
         );
       } else {
         const data =
-          await likeVideo(videoId);
+          await likeVideo(
+            videoId
+          );
 
         setLiked(true);
 
@@ -507,8 +449,8 @@ export default function Watch() {
                   typeof data?.likesCount ===
                   "number"
                     ? data.likesCount
-                    : (current.likes || 0) +
-                      1,
+                    : (current.likes ||
+                        0) + 1,
               }
             : current
         );
@@ -524,27 +466,32 @@ export default function Watch() {
   };
 
   /*
-  |--------------------------------------------------------------------------
-  | SAVE
-  |--------------------------------------------------------------------------
-  */
-
+   * Save / Unsave
+   */
   const handleSave = async () => {
     if (!user) {
       requireLogin();
       return;
     }
 
-    if (actionLoading) return;
+    if (actionLoading) {
+      return;
+    }
 
     try {
       setActionLoading(true);
 
       if (saved) {
-        await unsaveVideo(videoId);
+        await unsaveVideo(
+          videoId
+        );
+
         setSaved(false);
       } else {
-        await saveVideo(videoId);
+        await saveVideo(
+          videoId
+        );
+
         setSaved(true);
       }
     } catch (error) {
@@ -558,98 +505,8 @@ export default function Watch() {
   };
 
   /*
-  |--------------------------------------------------------------------------
-  | SUBSCRIBE
-  |--------------------------------------------------------------------------
-  */
-
-  const handleSubscribe = async () => {
-    if (!user) {
-      requireLogin();
-      return;
-    }
-
-    const channelId =
-      video?.owner?._id;
-
-    if (!channelId) {
-      return;
-    }
-
-    if (user?._id === channelId) {
-      return;
-    }
-
-    if (subscribeLoading) {
-      return;
-    }
-
-    try {
-      setSubscribeLoading(true);
-
-      if (subscribed) {
-        const data =
-          await unsubscribeChannel(
-            channelId
-          );
-
-        setSubscribed(false);
-
-        if (
-          typeof data?.subscriberCount ===
-          "number"
-        ) {
-          setSubscriberCount(
-            data.subscriberCount
-          );
-        } else {
-          setSubscriberCount(
-            (current) =>
-              Math.max(0, current - 1)
-          );
-        }
-      } else {
-        const data =
-          await subscribeChannel(
-            channelId
-          );
-
-        setSubscribed(true);
-
-        if (
-          typeof data?.subscriberCount ===
-          "number"
-        ) {
-          setSubscriberCount(
-            data.subscriberCount
-          );
-        } else {
-          setSubscriberCount(
-            (current) => current + 1
-          );
-        }
-      }
-    } catch (error) {
-      console.error(
-        "Subscribe action error:",
-        error
-      );
-
-      alert(
-        error.message ||
-          "Unable to update subscription."
-      );
-    } finally {
-      setSubscribeLoading(false);
-    }
-  };
-
-  /*
-  |--------------------------------------------------------------------------
-  | COMMENT
-  |--------------------------------------------------------------------------
-  */
-
+   * Add comment
+   */
   const handleComment = async (
     event
   ) => {
@@ -665,7 +522,9 @@ export default function Watch() {
     }
 
     try {
-      setCommentLoading(true);
+      setCommentLoading(
+        true
+      );
 
       const data =
         await addComment(
@@ -692,74 +551,60 @@ export default function Watch() {
           "Unable to add comment."
       );
     } finally {
-      setCommentLoading(false);
-    }
-  };
-
-  /*
-  |--------------------------------------------------------------------------
-  | DELETE COMMENT
-  |--------------------------------------------------------------------------
-  */
-
-  const handleDeleteComment = async (
-    commentId
-  ) => {
-    if (!user) {
-      requireLogin();
-      return;
-    }
-
-    try {
-      await deleteComment(commentId);
-
-      setComments((current) =>
-        current.filter(
-          (comment) =>
-            comment._id !== commentId
-        )
-      );
-    } catch (error) {
-      console.error(
-        "Delete comment error:",
-        error
+      setCommentLoading(
+        false
       );
     }
   };
 
   /*
-  |--------------------------------------------------------------------------
-  | SHARE
-  |--------------------------------------------------------------------------
-  */
+   * Delete comment
+   */
+  const handleDeleteComment =
+    async (commentId) => {
+      try {
+        await deleteComment(
+          commentId
+        );
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        window.location.href
-      );
-
-      alert("Video link copied!");
-    } catch {
-      alert("Unable to copy link.");
-    }
-  };
+        setComments((current) =>
+          current.filter(
+            (comment) =>
+              comment._id !==
+              commentId
+          )
+        );
+      } catch (error) {
+        console.error(
+          "Delete comment error:",
+          error
+        );
+      }
+    };
 
   /*
-  |--------------------------------------------------------------------------
-  | LOADING
-  |--------------------------------------------------------------------------
-  */
+   * Share
+   */
+  const handleShare =
+    async () => {
+      try {
+        await navigator.clipboard.writeText(
+          window.location.href
+        );
+
+        alert(
+          "Video link copied!"
+        );
+      } catch {
+        alert(
+          "Unable to copy link."
+        );
+      }
+    };
 
   if (loading) {
     return <LoadingWatch />;
   }
-
-  /*
-  |--------------------------------------------------------------------------
-  | ERROR
-  |--------------------------------------------------------------------------
-  */
 
   if (error || !video) {
     return (
@@ -785,12 +630,6 @@ export default function Watch() {
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | CREATOR
-  |--------------------------------------------------------------------------
-  */
-
   const creator =
     video.owner?.fullName ||
     video.owner?.username ||
@@ -799,20 +638,6 @@ export default function Watch() {
   const avatar =
     video.owner?.avatar ||
     "https://i.pravatar.cc/100?img=12";
-
-  const channelId =
-    video.owner?._id;
-
-  const isOwnChannel =
-    user &&
-    channelId &&
-    user._id === channelId;
-
-  /*
-  |--------------------------------------------------------------------------
-  | UI
-  |--------------------------------------------------------------------------
-  */
 
   return (
     <div className="mx-auto max-w-[1400px] pb-16">
@@ -828,11 +653,9 @@ export default function Watch() {
         />
       </div>
 
-      {/* CONTENT */}
+      {/* TITLE */}
 
       <div className="mt-6">
-        {/* TITLE */}
-
         <h1 className="text-xl font-bold leading-7 sm:text-2xl">
           {video.title}
         </h1>
@@ -840,8 +663,6 @@ export default function Watch() {
         {/* CREATOR + ACTIONS */}
 
         <div className="mt-4 flex flex-col gap-4 border-b border-[#24282E] pb-5 lg:flex-row lg:items-center lg:justify-between">
-          {/* CREATOR */}
-
           <div className="flex items-center gap-3">
             <img
               src={avatar}
@@ -852,79 +673,31 @@ export default function Watch() {
             <div>
               <Link
                 to={`/channel/${
-                  video.owner?.username || ""
+                  video.owner
+                    ?.username || ""
                 }`}
-                className="text-sm font-semibold transition hover:text-[#22c55e]"
+                className="text-sm font-semibold hover:text-[#075b8d]"
               >
                 {creator}
               </Link>
 
-              <div className="mt-0.5 flex items-center gap-2">
-                <p className="text-xs text-gray-600">
-                  MANIT Tube Creator
-                </p>
-
-                <span className="text-xs text-gray-700">
-                  •
-                </span>
-
-                <p className="text-xs text-gray-600">
-                  {formatViews(
-                    subscriberCount
-                  )}{" "}
-                  subscriber
-                  {subscriberCount !== 1
-                    ? "s"
-                    : ""}
-                </p>
-              </div>
+              <p className="text-xs text-gray-600">
+                MANIT Tube Creator
+              </p>
             </div>
-
-            {/* SUBSCRIBE */}
-
-            {!isOwnChannel &&
-              channelId && (
-                <button
-                  type="button"
-                  onClick={
-                    handleSubscribe
-                  }
-                  disabled={
-                    subscribeLoading
-                  }
-                  className={`ml-1 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition ${
-                    subscribed
-                      ? "bg-[#181C21] text-gray-200 hover:bg-[#242A31]"
-                      : "bg-[#22c55e] text-black hover:bg-[#2bd66b]"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
-                >
-                  {subscribeLoading ? (
-                    <Loader2
-                      size={16}
-                      className="animate-spin"
-                    />
-                  ) : subscribed ? (
-                    <BellOff size={16} />
-                  ) : (
-                    <Bell size={16} />
-                  )}
-
-                  {subscribed
-                    ? "Subscribed"
-                    : "Subscribe"}
-                </button>
-              )}
           </div>
-
-          {/* ACTIONS */}
 
           <div className="flex items-center gap-2 overflow-x-auto">
             {/* LIKE */}
 
             <button
               type="button"
-              onClick={handleLike}
-              disabled={actionLoading}
+              onClick={
+                handleLike
+              }
+              disabled={
+                actionLoading
+              }
               className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition ${
                 liked
                   ? "bg-[#075b8d] text-white"
@@ -949,10 +722,15 @@ export default function Watch() {
 
             <button
               type="button"
-              onClick={handleShare}
+              onClick={
+                handleShare
+              }
               className="flex items-center gap-2 rounded-full bg-[#181C21] px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-[#22272E]"
             >
-              <Share2 size={17} />
+              <Share2
+                size={17}
+              />
+
               Share
             </button>
 
@@ -960,8 +738,12 @@ export default function Watch() {
 
             <button
               type="button"
-              onClick={handleSave}
-              disabled={actionLoading}
+              onClick={
+                handleSave
+              }
+              disabled={
+                actionLoading
+              }
               className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition ${
                 saved
                   ? "bg-[#075b8d] text-white"
@@ -977,14 +759,18 @@ export default function Watch() {
                 }
               />
 
-              {saved ? "Saved" : "Save"}
+              {saved
+                ? "Saved"
+                : "Save"}
             </button>
 
             <button
               type="button"
               className="rounded-full bg-[#181C21] p-2.5 text-gray-400 hover:text-white"
             >
-              <MoreHorizontal size={18} />
+              <MoreHorizontal
+                size={18}
+              />
             </button>
           </div>
         </div>
@@ -992,7 +778,7 @@ export default function Watch() {
         {/* DESCRIPTION */}
 
         <div className="mt-5 rounded-2xl bg-[#111418] p-4">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-gray-400">
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-400">
             <span>
               {formatViews(
                 video.views
@@ -1036,10 +822,10 @@ export default function Watch() {
             </span>
           </div>
 
-          {/* COMMENT FORM */}
-
           <form
-            onSubmit={handleComment}
+            onSubmit={
+              handleComment
+            }
             className="mt-5 flex gap-3"
           >
             <img
@@ -1086,13 +872,13 @@ export default function Watch() {
                     className="animate-spin"
                   />
                 ) : (
-                  <Send size={15} />
+                  <Send
+                    size={15}
+                  />
                 )}
               </button>
             </div>
           </form>
-
-          {/* COMMENT LIST */}
 
           <div className="mt-8 space-y-7">
             {commentsLoading ? (
@@ -1109,16 +895,21 @@ export default function Watch() {
                 </p>
 
                 <p className="mt-1 text-xs text-[#555853]">
-                  Be the first one to
-                  start the conversation.
+                  Be the first one
+                  to start the
+                  conversation.
                 </p>
               </div>
             ) : (
               comments.map(
                 (comment) => (
                   <CommentItem
-                    key={comment._id}
-                    comment={comment}
+                    key={
+                      comment._id
+                    }
+                    comment={
+                      comment
+                    }
                     onDelete={
                       handleDeleteComment
                     }

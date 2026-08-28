@@ -1,4 +1,7 @@
-import { Routes, Route } from "react-router-dom";
+import {
+  Routes,
+  Route,
+} from "react-router-dom";
 
 import MainLayout from "./components/layout/MainLayout";
 
@@ -6,9 +9,8 @@ import Home from "./pages/Home";
 import Watch from "./pages/Watch";
 import Upload from "./pages/Upload";
 import Saved from "./pages/Saved";
-
+import History from "./pages/History";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 
 function Placeholder({ title }) {
   return (
@@ -23,52 +25,43 @@ function Placeholder({ title }) {
 function App() {
   return (
     <Routes>
-      {/* ================================
-          AUTH ROUTES
-          These routes are outside
-          MainLayout
-      ================================= */}
+      {/* Login */}
 
       <Route
         path="/login"
         element={<Login />}
       />
 
+      {/* Main Layout */}
+
       <Route
-        path="/register"
-        element={<Register />}
-      />
-
-      {/* ================================
-          MAIN APPLICATION
-      ================================= */}
-
-      <Route element={<MainLayout />}>
-        {/* Home */}
+        element={<MainLayout />}
+      >
         <Route
           path="/"
           element={<Home />}
         />
 
-        {/* Watch Video */}
         <Route
           path="/watch/:videoId"
           element={<Watch />}
         />
 
-        {/* Upload */}
         <Route
           path="/upload"
           element={<Upload />}
         />
 
-        {/* Saved Videos */}
         <Route
           path="/saved"
           element={<Saved />}
         />
 
-        {/* Search / Explore */}
+        <Route
+          path="/history"
+          element={<History />}
+        />
+
         <Route
           path="/search"
           element={
@@ -76,15 +69,6 @@ function App() {
           }
         />
 
-        {/* History */}
-        <Route
-          path="/history"
-          element={
-            <Placeholder title="History" />
-          }
-        />
-
-        {/* Playlists */}
         <Route
           path="/playlists"
           element={
@@ -93,9 +77,7 @@ function App() {
         />
       </Route>
 
-      {/* ================================
-          404
-      ================================= */}
+      {/* 404 */}
 
       <Route
         path="*"

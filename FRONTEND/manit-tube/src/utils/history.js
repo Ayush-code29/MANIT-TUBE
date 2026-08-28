@@ -1,17 +1,23 @@
-const HISTORY_KEY = "manit_tube_history";
+const HISTORY_KEY = "manit_tube_watch_history";
 
-export function getHistory() {
+export function getWatchHistory() {
   try {
     const stored = localStorage.getItem(
       HISTORY_KEY
     );
 
-    if (!stored) return [];
+    if (!stored) {
+      return [];
+    }
 
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+
+    return Array.isArray(parsed)
+      ? parsed
+      : [];
   } catch (error) {
     console.error(
-      "Failed to read history:",
+      "Failed to read watch history:",
       error
     );
 
@@ -19,49 +25,129 @@ export function getHistory() {
   }
 }
 
-export function addToHistory(video) {
-  if (!video?._id) return;
+export function addToWatchHistory(video) {
+  if (!video?._id) {
+    return;
+  }
 
   try {
-    const history = getHistory();
+    const currentHistory =
+      getWatchHistory();
 
-    const filtered = history.filter(
-      (item) => item._id !== video._id
-    );
+    const videoId = video._id.toString();
 
-    const updated = [
-      {
-        ...video,
-        watchedAt: new Date().toISOString(),
-      },
-      ...filtered,
+    const historyWithoutVideo =
+      currentHistory.filter(
+        (item) =>
+          item.videoId !== videoId
+      );
+
+    const historyItem = {
+      videoId,
+
+      title:
+        video.title ||
+        "Untitled video",
+
+      thumbnail:
+        video.thumbnail || "",
+
+      videoFile:
+        video.videoFile || "",
+
+      description:
+        video.description || "",
+
+      views:
+        Number(video.views) || 0,
+
+      likes:
+        Number(video.likes) || 0,
+
+      createdAt:
+        video.createdAt ||
+        new Date().toISOString(),
+
+      owner: video.owner
+        ? {
+            _id: video.owner._id,
+            username:
+              video.owner.username ||
+              "",
+            fullName:
+              video.owner.fullName ||
+              "",
+            avatar:
+              video.owner.avatar ||
+              "",
+          }
+        : null,
+
+      watchedAt:
+        new Date().toISOString(),
+    };
+
+    const updatedHistory = [
+      historyItem,
+      ...historyWithoutVideo,
     ].slice(0, 50);
 
     localStorage.setItem(
       HISTORY_KEY,
-      JSON.stringify(updated)
+      JSON.stringify(updatedHistory)
+    );
+
+    window.dispatchEvent(
+      new Event("watch-history-updated")
     );
   } catch (error) {
     console.error(
-      "Failed to save history:",
+      "Failed to save watch history:",
       error
     );
   }
 }
 
-export function removeFromHistory(videoId) {
-  const history = getHistory();
+export function removeFromWatchHistory(
+  videoId
+) {
+  try {
+    const updatedHistory =
+      getWatchHistory().filter(
+        (item) =>
+          item.videoId !==
+          videoId.toString()
+      );
 
-  const updated = history.filter(
-    (item) => item._id !== videoId
-  );
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(updatedHistory)
+    );
 
-  localStorage.setItem(
-    HISTORY_KEY,
-    JSON.stringify(updated)
-  );
+    window.dispatchEvent(
+      new Event("watch-history-updated")
+    );
+  } catch (error) {
+    console.error(
+      "Failed to remove history item:",
+      error
+    );
+  }
 }
 
-export function clearHistory() {
-  localStorage.removeItem(HISTORY_KEY);
+export function clearWatchHistory() {
+  try {
+    localStorage.removeItem(
+      HISTORY_KEY
+    );
+
+    window.dispatchEvent(
+      new Event("watch-history-updated")
+    );
+  } catch (error) {
+    console.error(
+      "Failed to clear watch history:",
+      error
+    );
+  }
 }

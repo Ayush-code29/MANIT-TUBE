@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
 } from "react";
 
 const AuthContext = createContext(null);
@@ -13,63 +14,150 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check whether user is already logged in
-  const fetchCurrentUser = async () => {
+  /*
+   * Get currently logged-in user
+   *
+   * IMPORTANT:
+   * credentials: "include" sends the JWT cookie
+   * to the backend.
+   */
+  const fetchCurrentUser = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_URL}/users/me`,
         {
           method: "GET",
           credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
         }
       );
 
       if (!response.ok) {
         setUser(null);
-        return;
+        return null;
       }
 
       const data = await response.json();
 
-      setUser(data.user || null);
+      /*
+       * Backend can return:
+       *
+       * { user: {...} }
+       *
+       * or
+       *
+       * { data: { user: {...} } }
+       */
+      const currentUser =
+        data?.user ||
+        data?.data?.user ||
+        null;
+
+      setUser(currentUser);
+
+      return currentUser;
     } catch (error) {
-      console.error("Auth check failed:", error);
+      console.error(
+        "Auth check failed:",
+        error
+      );
+
       setUser(null);
+
+      return null;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Check login when app starts
-  useEffect(() => {
-    fetchCurrentUser();
   }, []);
 
-  // Called after successful login
-  const login = (userData) => {
-    setUser(userData);
-  };
+  /*
+   * Check authentication when application starts.
+   */
+  useEffect(() => {
+    fetchCurrentUser();
+  }, [fetchCurrentUser]);
 
-  // Logout
-  const logout = async () => {
+  /*
+   * Used after successful login.
+   *
+   * We don't blindly trust the response from login.
+   * We ask /users/me again so AuthContext contains
+   * exactly the same user that backend recognizes.
+   */
+  const login = useCallback(
+    async (userData = null) => {
+      /*
+       * Immediately update UI if login API returned
+       * a user object.
+       */
+      if (userData) {
+        const loggedInUser =
+          userData?.user ||
+          userData?.data?.user ||
+          userData;
+
+        if (
+          loggedInUser &&
+          typeof loggedInUser === "object"
+        ) {
+          setUser(loggedInUser);
+        }
+      }
+
+      /*
+       * Confirm authentication from backend.
+       */
+      const currentUser =
+        await fetchCurrentUser();
+
+      return currentUser;
+    },
+    [fetchCurrentUser]
+  );
+
+  /*
+   * Logout
+   */
+  const logout = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_URL}/users/logout`,
         {
           method: "POST",
           credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
         }
       );
 
       if (!response.ok) {
-        console.error("Logout failed");
+        console.error(
+          "Logout request failed:",
+          response.status
+        );
       }
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error(
+        "Logout error:",
+        error
+      );
     } finally {
+      /*
+       * Always clear frontend auth state.
+       */
       setUser(null);
     }
-  };
+  }, []);
+
+  /*
+   * Refresh authentication manually.
+   */
+  const refreshUser = useCallback(async () => {
+    return await fetchCurrentUser();
+  }, [fetchCurrentUser]);
 
   return (
     <AuthContext.Provider
@@ -78,7 +166,8 @@ export function AuthProvider({ children }) {
         loading,
         login,
         logout,
-        refreshUser: fetchCurrentUser,
+        refreshUser,
+        isAuthenticated: Boolean(user),
       }}
     >
       {children}

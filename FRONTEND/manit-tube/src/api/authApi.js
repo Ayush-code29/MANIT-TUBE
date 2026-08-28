@@ -1,53 +1,26 @@
-const API_URL = "http://localhost:8000/api/v1";
+const API_URL =
+  "http://localhost:8000/api/v1";
 
-async function parseResponse(response) {
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(
-      data?.message || "Something went wrong"
-    );
-  }
-
-  return data;
-}
-
-export const registerUser = async ({
-  username,
+/*
+ * Login user
+ */
+export async function loginUser(
   email,
-  fullName,
-  password,
-  avatar,
-}) => {
-  const formData = new FormData();
-
-  formData.append("username", username);
-  formData.append("email", email);
-  formData.append("fullName", fullName);
-  formData.append("password", password);
-  formData.append("avatar", avatar);
-
-  const response = await fetch(
-    `${API_URL}/users/register`,
-    {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    }
-  );
-
-  return parseResponse(response);
-};
-
-export const loginUser = async (email, password) => {
+  password
+) {
   const response = await fetch(
     `${API_URL}/users/login`,
     {
       method: "POST",
+
       credentials: "include",
+
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
+        Accept: "application/json",
       },
+
       body: JSON.stringify({
         email,
         password,
@@ -55,29 +28,127 @@ export const loginUser = async (email, password) => {
     }
   );
 
-  return parseResponse(response);
-};
+  let data = null;
 
-export const getCurrentUser = async () => {
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        data?.error ||
+        "Unable to login."
+    );
+  }
+
+  return data;
+}
+
+/*
+ * Register user
+ */
+export async function registerUser(
+  formData
+) {
   const response = await fetch(
-    `${API_URL}/users/current-user`,
+    `${API_URL}/users/register`,
     {
-      method: "GET",
+      method: "POST",
+
       credentials: "include",
+
+      body: formData,
     }
   );
 
-  return parseResponse(response);
-};
+  let data = null;
 
-export const logoutUser = async () => {
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        data?.error ||
+        "Unable to register."
+    );
+  }
+
+  return data;
+}
+
+/*
+ * Get current logged-in user
+ */
+export async function getCurrentUser() {
+  const response = await fetch(
+    `${API_URL}/users/me`,
+    {
+      method: "GET",
+
+      credentials: "include",
+
+      headers: {
+        Accept: "application/json",
+      },
+    }
+  );
+
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        "Unable to fetch current user."
+    );
+  }
+
+  return data;
+}
+
+/*
+ * Logout user
+ */
+export async function logoutUser() {
   const response = await fetch(
     `${API_URL}/users/logout`,
     {
       method: "POST",
+
       credentials: "include",
+
+      headers: {
+        Accept: "application/json",
+      },
     }
   );
 
-  return parseResponse(response);
-};
+  let data = null;
+
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+        "Unable to logout."
+    );
+  }
+
+  return data;
+}
