@@ -1,5 +1,5 @@
 const API_URL =
-  "http://localhost:8000/api/v1";
+  "https://manit-tube.onrender.com/api/v1";
 
 /*
 |--------------------------------------------------------------------------

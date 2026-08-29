@@ -11,12 +11,57 @@ import subscriptionRouter from "./routes/subscription.routes.js";
 
 const app = express();
 
+/*
+|--------------------------------------------------------------------------
+| CORS
+|--------------------------------------------------------------------------
+|
+| Production frontend URL Render environment variable se aayega.
+|
+| Example:
+| FRONTEND_URL=https://your-frontend-url.onrender.com
+|
+| Local development ke liye localhost bhi allowed hai.
+|
+|--------------------------------------------------------------------------
+*/
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, callback) => {
+      /*
+       * Allow requests without an Origin header.
+       * Useful for Postman/server-side requests.
+       */
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(
+          `CORS blocked for origin: ${origin}`
+        )
+      );
+    },
+
     credentials: true,
   })
 );
+
+/*
+|--------------------------------------------------------------------------
+| Body Parsers
+|--------------------------------------------------------------------------
+*/
 
 app.use(express.json());
 
@@ -25,6 +70,12 @@ app.use(
     extended: true,
   })
 );
+
+/*
+|--------------------------------------------------------------------------
+| Cookie Parser
+|--------------------------------------------------------------------------
+*/
 
 app.use(cookieParser());
 

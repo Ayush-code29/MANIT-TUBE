@@ -1,37 +1,44 @@
 const API_URL =
-  "http://localhost:8000/api/v1";
+  "https://manit-tube.onrender.com/api/v1";
 
 /*
- * Login user
- */
+|--------------------------------------------------------------------------
+| Login User
+|--------------------------------------------------------------------------
+*/
+
 export async function loginUser(
   email,
   password
 ) {
-  const response = await fetch(
-    `${API_URL}/users/login`,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      `${API_URL}/users/login`,
+      {
+        method: "POST",
 
-      credentials: "include",
+        credentials: "include",
 
-      headers: {
-        "Content-Type":
-          "application/json",
-        Accept: "application/json",
-      },
+        headers: {
+          "Content-Type":
+            "application/json",
 
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    }
-  );
+          Accept:
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      }
+    );
 
   let data = null;
 
   try {
-    data = await response.json();
+    data =
+      await response.json();
   } catch {
     data = null;
   }
@@ -48,26 +55,31 @@ export async function loginUser(
 }
 
 /*
- * Register user
- */
+|--------------------------------------------------------------------------
+| Register User
+|--------------------------------------------------------------------------
+*/
+
 export async function registerUser(
   formData
 ) {
-  const response = await fetch(
-    `${API_URL}/users/register`,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      `${API_URL}/users/register`,
+      {
+        method: "POST",
 
-      credentials: "include",
+        credentials: "include",
 
-      body: formData,
-    }
-  );
+        body: formData,
+      }
+    );
 
   let data = null;
 
   try {
-    data = await response.json();
+    data =
+      await response.json();
   } catch {
     data = null;
   }
@@ -84,26 +96,32 @@ export async function registerUser(
 }
 
 /*
- * Get current logged-in user
- */
+|--------------------------------------------------------------------------
+| Get Current Logged-in User
+|--------------------------------------------------------------------------
+*/
+
 export async function getCurrentUser() {
-  const response = await fetch(
-    `${API_URL}/users/me`,
-    {
-      method: "GET",
+  const response =
+    await fetch(
+      `${API_URL}/users/me`,
+      {
+        method: "GET",
 
-      credentials: "include",
+        credentials: "include",
 
-      headers: {
-        Accept: "application/json",
-      },
-    }
-  );
+        headers: {
+          Accept:
+            "application/json",
+        },
+      }
+    );
 
   let data = null;
 
   try {
-    data = await response.json();
+    data =
+      await response.json();
   } catch {
     data = null;
   }
@@ -119,26 +137,32 @@ export async function getCurrentUser() {
 }
 
 /*
- * Logout user
- */
+|--------------------------------------------------------------------------
+| Logout User
+|--------------------------------------------------------------------------
+*/
+
 export async function logoutUser() {
-  const response = await fetch(
-    `${API_URL}/users/logout`,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      `${API_URL}/users/logout`,
+      {
+        method: "POST",
 
-      credentials: "include",
+        credentials: "include",
 
-      headers: {
-        Accept: "application/json",
-      },
-    }
-  );
+        headers: {
+          Accept:
+            "application/json",
+        },
+      }
+    );
 
   let data = null;
 
   try {
-    data = await response.json();
+    data =
+      await response.json();
   } catch {
     data = null;
   }
